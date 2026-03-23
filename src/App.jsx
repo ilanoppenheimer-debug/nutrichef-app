@@ -1740,8 +1740,14 @@ function RecipeCard({ recipe, profile, setProfile, savedMeals, setSavedMeals, fa
 // --- LÓGICA DE API GEMINI ---
 
 async function callGeminiAPI(promptText) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   
+  if (!apiKey) {
+    console.error("FALTA LA API KEY. Revisa que el archivo .env esté bien escrito.");
+    throw new Error("API Key faltante");
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
   const payload = {
     contents: [{ parts: [{ text: promptText }] }],
     generationConfig: { 
@@ -1749,35 +1755,37 @@ async function callGeminiAPI(promptText) {
     }
   };
 
-  const maxRetries = 3;
-  let delay = 1000;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      const data = await response.json();
-      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (!textResult) throw new Error("No text found in response");
-      
-      return JSON.parse(textResult);
-
-    } catch (error) {
-      if (i === maxRetries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2; 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Detalle del error de Google:", errorData);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
+    const data = await response.json();
+    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!textResult) throw new Error("La IA no devolvió ningún texto.");
+    
+    // EL ANTÍDOTO: Limpiar cualquier formato de código que envíe Gemini antes de leerlo
+    const cleanText = textResult.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    return JSON.parse(cleanText);
+
+  } catch (error) {
+    console.error("Fallo general en la conexión con la IA:", error);
+    throw error;
   }
 }
 
 async function callGeminiVisionAPI(promptText, base64Image, mimeType) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
   const payload = {
@@ -1796,8 +1804,13 @@ async function callGeminiVisionAPI(promptText, base64Image, mimeType) {
     body: JSON.stringify(payload)
   });
 
-  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  
+ if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      // ESTA LÍNEA HARÁ QUE SALTE UN POP-UP EN TU PANTALLA
+      alert("DIAGNÓSTICO DE GOOGLE:\n" + JSON.stringify(errorData, null, 2));
+      console.error("Detalle del error de Google:", errorData);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
