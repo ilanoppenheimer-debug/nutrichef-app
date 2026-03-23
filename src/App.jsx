@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN DE LA API ---
-const apiKey = ""; // La clave se provee en el entorno de ejecución
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY; // La clave se provee en el entorno de ejecución
 
 // --- COMPONENTE PRINCIPAL ---
 export default function App() {
@@ -44,6 +44,21 @@ export default function App() {
     dislikes: [],
     learnedPreferences: []
   });
+
+  // Cargar datos al iniciar
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('nutrichef_profile');
+    const savedFavs = localStorage.getItem('nutrichef_favs');
+    
+    if (savedProfile) setProfile(JSON.parse(savedProfile));
+    if (savedFavs) setFavoriteRecipes(JSON.parse(savedFavs));
+  }, []);
+
+  // Guardar datos cada vez que cambien
+  useEffect(() => {
+    localStorage.setItem('nutrichef_profile', JSON.stringify(profile));
+    localStorage.setItem('nutrichef_favs', JSON.stringify(favoriteRecipes));
+  }, [profile, favoriteRecipes]);
 
   return (
     <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-12">
@@ -1449,7 +1464,7 @@ function RecipeCard({ recipe, profile, setProfile, savedMeals, setSavedMeals, fa
     const prompt = `El usuario está cocinando esta receta: "${recipe.title}". Ingredientes: ${recipe.ingredients ? recipe.ingredients.map(i => i.name).join(', ') : 'Desconocidos'}. Pregunta del usuario sobre el plato: "${chefQuestion}". Responde de forma concisa, útil y amable en un solo párrafo corto, asumiendo el rol de un chef experto.`;
     
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1725,7 +1740,7 @@ function RecipeCard({ recipe, profile, setProfile, savedMeals, setSavedMeals, fa
 // --- LÓGICA DE API GEMINI ---
 
 async function callGeminiAPI(promptText) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
   const payload = {
     contents: [{ parts: [{ text: promptText }] }],
@@ -1763,7 +1778,7 @@ async function callGeminiAPI(promptText) {
 }
 
 async function callGeminiVisionAPI(promptText, base64Image, mimeType) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
   const payload = {
     contents: [{ 
