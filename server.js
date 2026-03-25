@@ -16,25 +16,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API
 console.log("====================================");
 console.log("🔑 CLAVE CARGADA EN EL SERVIDOR:", GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 15) + "..." : "NINGUNA");
 console.log("====================================");
-const DEFAULT_TEXT_MODELS = [
-  "gemini-2.0-flash",
-];
+const GEMINI_TEXT_MODELS = ['gemini-2.5-flash'];
+const GEMINI_VISION_MODELS = ['gemini-2.5-flash'];
+console.log("🚀 MODELOS ACTIVOS:", GEMINI_TEXT_MODELS);
+console.log("🚀 MODELOS ACTIVOS:", GEMINI_VISION_MODELS);
 
-const DEFAULT_VISION_MODELS = [
-  "gemini-2.0-flash",
-];
-
-const GEMINI_TEXT_MODELS = [
-  process.env.GEMINI_TEXT_MODEL,
-  process.env.VITE_GEMINI_TEXT_MODEL,
-  ...DEFAULT_TEXT_MODELS
-].filter(Boolean);
-
-const GEMINI_VISION_MODELS = [
-  process.env.GEMINI_VISION_MODEL,
-  process.env.VITE_GEMINI_VISION_MODEL,
-  ...DEFAULT_VISION_MODELS
-].filter(Boolean);
 const RETRYABLE_GEMINI_STATUS = new Set([404, 429, 503]);
 const GEMINI_RETRY_DELAY_MS = 1200;
 const MIME_TYPES = {
@@ -113,14 +99,23 @@ function buildGeminiError(status, modelName, errorData = {}) {
   return new GeminiRequestError(apiMessage || `HTTP error! status: ${status}`, { status, retryable, modelName });
 }
 async function fetchGeminiContent(kind, payload) {
+  console.log("📦 PAYLOAD FINAL:", JSON.stringify(payload, null, 2));
   if (!GEMINI_API_KEY) {
     throw new Error('Falta GEMINI_API_KEY en el servidor.');
   }
 
-  // 🔧 FIX AQUÍ (adentro de la función)
-  if (payload?.generation_config?.responseMimeType) {
+// 🔧 LIMPIEZA COMPLETA DEL PAYLOAD (robusto)
+if (payload) {
+  // formato snake_case
+  if (payload.generation_config?.responseMimeType) {
     delete payload.generation_config.responseMimeType;
   }
+
+  // formato camelCase
+  if (payload.generationConfig?.responseMimeType) {
+    delete payload.generationConfig.responseMimeType;
+  }
+}
 
   const modelNames = kind === 'vision' ? GEMINI_VISION_MODELS : GEMINI_TEXT_MODELS;
   const uniqueModels = [...new Set(modelNames)];
