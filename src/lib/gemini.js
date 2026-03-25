@@ -1,6 +1,6 @@
 export const GEMINI_API_ENDPOINT = '/api/gemini';
 export const GEMINI_COOLDOWN_KEY = 'nutrichef_gemini_cooldown_until';
-export const GEMINI_COOLDOWN_MS = 2 * 60 * 1000;
+export const GEMINI_COOLDOWN_MS = 5 * 1000;
 export const GENERATOR_SUGGESTIONS_CACHE_KEY = 'nutrichef_generator_suggestions_cache';
 export const GENERATOR_RECIPE_CACHE_KEY = 'nutrichef_generator_recipe_cache';
 
