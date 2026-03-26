@@ -10,47 +10,50 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing payload" });
     }
 
-    let geminiBody;
+    // 🔥 CONVERTIMOS SIEMPRE A FORMATO GEMINI VÁLIDO
+    let promptText;
 
-    if (kind === "vision") {
-      geminiBody = payload;
+    if (typeof payload === "string") {
+      promptText = payload;
+    } else if (payload?.prompt) {
+      promptText = payload.prompt;
     } else {
-      const promptText =
-        typeof payload === "string"
-          ? payload
-          : payload.prompt
-          ? payload.prompt
-          : JSON.stringify(payload);
-
-      geminiBody = {
-        contents: [
-          {
-            parts: [{ text: promptText }]
-          }
-        ]
-      };
+      promptText = JSON.stringify(payload);
     }
 
-    console.log("FINAL BODY:", JSON.stringify(geminiBody));
+    const geminiBody = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: promptText
+            }
+          ]
+        }
+      ]
+    };
+
+    console.log("SENDING TO GEMINI:", JSON.stringify(geminiBody));
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(geminiBody),
+        body: JSON.stringify(geminiBody)
       }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Gemini error:", data);
+      console.error("GEMINI ERROR:", data);
       return res.status(response.status).json({
         error: data.error?.message,
-        raw: data,
+        raw: data
       });
     }
 
