@@ -12,20 +12,23 @@ export default async function handler(req, res) {
 
     let geminiBody;
 
-    // 🔥 ADAPTADOR CLAVE
-    if (kind === "text" || kind === "recipe" || kind === "suggestions") {
+    if (kind === "vision") {
+      geminiBody = payload;
+    } else {
+      const promptText =
+        typeof payload === "string"
+          ? payload
+          : payload.prompt
+          ? payload.prompt
+          : JSON.stringify(payload);
+
       geminiBody = {
         contents: [
           {
-            parts: [{ text: payload.prompt || payload }]
+            parts: [{ text: promptText }]
           }
         ]
       };
-    } else if (kind === "vision") {
-      geminiBody = payload; // si ya viene bien armado
-    } else {
-      // fallback
-      geminiBody = payload;
     }
 
     console.log("FINAL BODY:", JSON.stringify(geminiBody));
