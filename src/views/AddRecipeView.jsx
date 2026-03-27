@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Camera, CheckCircle2, ChevronRight, Globe, Instagram, RefreshCw, Type, X } from 'lucide-react';
+import { Camera, CheckCircle2, ChevronRight, Globe, RefreshCw, Type, X } from 'lucide-react';
+import { FaInstagram } from 'react-icons/fa';
 import { useAppState } from '../context/appState.js';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/paths.js';
