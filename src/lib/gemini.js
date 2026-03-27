@@ -3,6 +3,9 @@ export const GEMINI_COOLDOWN_KEY = 'nutrichef_gemini_cooldown_until';
 export const GEMINI_COOLDOWN_MS = 5 * 1000;
 export const GENERATOR_SUGGESTIONS_CACHE_KEY = 'nutrichef_generator_suggestions_cache';
 export const GENERATOR_RECIPE_CACHE_KEY = 'nutrichef_generator_recipe_cache';
+export const EXPLORE_CACHE_KEY = 'nutrichef_explore_cache';
+export const MEALPLAN_CACHE_KEY = 'nutrichef_mealplan_cache';
+export const SHOPPING_CACHE_KEY = 'nutrichef_shopping_cache';
 
 // -------------------------
 // 🧠 LocalStorage helpers
@@ -29,11 +32,32 @@ export function writeStoredJson(key, value) {
 }
 
 // -------------------------
+// 🗜️ Perfil compacto
+// Reduce ~200 tokens por llamada eliminando campos vacíos y
+// acortando claves antes de serializar en los prompts
+// -------------------------
+export function compactProfile(profile) {
+  const parts = [];
+  if (profile.goals) parts.push(`Obj:${profile.goals}`);
+  if (profile.dailyCalories) parts.push(`Cal:${profile.dailyCalories}kcal`);
+  if (profile.proteinTarget) parts.push(`Prot:${profile.proteinTarget}g`);
+  if (profile.fiberTarget) parts.push(`Fibra:${profile.fiberTarget}g`);
+  if (profile.weight) parts.push(`Peso:${profile.weight}kg`);
+  if (profile.dietaryStyle && profile.dietaryStyle !== 'Ninguna') parts.push(`Dieta:${profile.dietaryStyle}`);
+  if (profile.religiousDiet && profile.religiousDiet !== 'Ninguna') parts.push(`Religion:${profile.religiousDiet}`);
+  if (profile.allergies?.length) parts.push(`Alergias:${profile.allergies.join(',')}`);
+  if (profile.dislikes?.length) parts.push(`Evitar:${profile.dislikes.join(',')}`);
+  if (profile.learnedPreferences?.length) parts.push(`Aprendido:${profile.learnedPreferences.join('|')}`);
+  if (profile.useProteinPowder) parts.push('ProtPolvo:Si');
+  if (profile.budgetFriendly) parts.push('Economico:Si');
+  return parts.join(' | ');
+}
+
+// -------------------------
 // ⏱️ Cooldown
 // -------------------------
 export function getGeminiCooldownUntil() {
-  const storedValue = readStoredJson(GEMINI_COOLDOWN_KEY, 0);
-  return Number(storedValue) || 0;
+  return Number(readStoredJson(GEMINI_COOLDOWN_KEY, 0)) || 0;
 }
 
 export function setGeminiCooldownUntil(timestamp) {
@@ -47,45 +71,82 @@ export function getCooldownMessage(cooldownUntil) {
 }
 
 // -------------------------
-// 💾 Recipe Cache
+// 💾 Cache helpers genéricos
 // -------------------------
-export function getRecipeCache() {
-  return readStoredJson(GENERATOR_RECIPE_CACHE_KEY, {});
+export function getCache(cacheKey) {
+  return readStoredJson(cacheKey, {});
 }
 
-export function setRecipeCache(cache) {
-  writeStoredJson(GENERATOR_RECIPE_CACHE_KEY, cache);
+export function setCache(cacheKey, data) {
+  writeStoredJson(cacheKey, data);
 }
+
+export function getCacheEntry(cacheKey, entryKey) {
+  const cache = getCache(cacheKey);
+  return cache[entryKey] ?? null;
+}
+
+export function setCacheEntry(cacheKey, entryKey, value) {
+  const cache = getCache(cacheKey);
+  cache[entryKey] = value;
+  setCache(cacheKey, cache);
+}
+
+// Backwards compat con código existente
+export function getRecipeCache() { return getCache(GENERATOR_RECIPE_CACHE_KEY); }
+export function setRecipeCache(cache) { setCache(GENERATOR_RECIPE_CACHE_KEY, cache); }
 
 // -------------------------
 // 🔑 Cache Keys
 // -------------------------
 export function buildGeneratorRecipeCacheKey({ suggestion, ingredients, profile }) {
   return JSON.stringify({
-    suggestionName: suggestion.name,
-    suggestionType: suggestion.type,
-    ingredients: ingredients.trim().toLowerCase(),
-    goals: profile.goals,
-    dietaryStyle: profile.dietaryStyle,
-    allergies: profile.allergies,
-    dislikes: profile.dislikes,
-    dailyCalories: profile.dailyCalories
+    n: suggestion.name,
+    i: ingredients.trim().toLowerCase(),
+    g: profile.goals,
+    d: profile.dietaryStyle,
+    a: profile.allergies,
+    cal: profile.dailyCalories
   });
 }
 
-// FIX: ahora incluye dishType, difficulty y cuisine para que cambiar
-// estos parámetros no devuelva el caché de una búsqueda anterior
 export function buildGeneratorSuggestionsCacheKey({ ingredients, profile, dishType, difficulty, cuisine }) {
   return JSON.stringify({
-    ingredients: ingredients.trim().toLowerCase(),
-    goals: profile.goals,
-    dietaryStyle: profile.dietaryStyle,
-    allergies: profile.allergies,
-    dislikes: profile.dislikes,
-    dishType: dishType || '',
-    difficulty: difficulty || '',
-    cuisine: cuisine || '',
+    i: ingredients.trim().toLowerCase(),
+    g: profile.goals,
+    d: profile.dietaryStyle,
+    a: profile.allergies,
+    dt: dishType || '',
+    dif: difficulty || '',
+    c: cuisine || '',
   });
+}
+
+export function buildExploreCacheKey({ query, mode, profile }) {
+  return JSON.stringify({
+    q: query.trim().toLowerCase(),
+    m: mode,
+    g: profile.goals,
+    d: profile.dietaryStyle,
+  });
+}
+
+export function buildMealPlanCacheKey({ planType, isTrainingDay, planPreferences, profile, savedMeals }) {
+  return JSON.stringify({
+    t: planType,
+    tr: isTrainingDay,
+    p: planPreferences,
+    g: profile.goals,
+    d: profile.dietaryStyle,
+    cal: profile.dailyCalories,
+    saved: savedMeals.map(m => m.title),
+  });
+}
+
+export function buildShoppingCacheKey(plan) {
+  // Basado en los nombres de las comidas del plan, no en el objeto completo
+  const mealNames = plan?.days?.flatMap(d => d.meals?.flatMap(m => m.options?.map(o => o.name) ?? []) ?? []) ?? [];
+  return JSON.stringify(mealNames.sort());
 }
 
 // -------------------------
@@ -93,7 +154,6 @@ export function buildGeneratorSuggestionsCacheKey({ ingredients, profile, dishTy
 // -------------------------
 export async function fetchGeminiContent({ kind, payload }) {
   const cooldownUntil = getGeminiCooldownUntil();
-
   if (cooldownUntil > Date.now()) {
     throw new Error(getCooldownMessage(cooldownUntil));
   }
@@ -108,13 +168,10 @@ export async function fetchGeminiContent({ kind, payload }) {
 
   if (!response.ok) {
     const message = data?.error || 'Error con Gemini';
-
     if (response.status === 429) {
-      const nextCooldown = Date.now() + GEMINI_COOLDOWN_MS;
-      setGeminiCooldownUntil(nextCooldown);
+      setGeminiCooldownUntil(Date.now() + GEMINI_COOLDOWN_MS);
       throw new Error(message);
     }
-
     throw new Error(message);
   }
 
@@ -122,49 +179,63 @@ export async function fetchGeminiContent({ kind, payload }) {
 }
 
 // -------------------------
-// 🤖 MAIN AI CALL (con cache)
+// 🤖 MAIN AI CALL
+// maxOutputTokens limita la respuesta — el mayor ahorro de coste.
+// Para JSON de recetas 800 tokens es más que suficiente.
+// Para planes semanales usamos 1200.
 // -------------------------
-export async function callGeminiAPI(promptText, cacheKey = null) {
-  const cache = getRecipeCache();
+export async function callGeminiAPI(promptText, cacheKey = null, storeCacheKey = null, maxTokens = 800) {
+  // storeCacheKey: clave del localStorage donde guardar el caché
+  // cacheKey: clave del entry dentro de ese store
+  if (storeCacheKey && cacheKey) {
+    const cached = getCacheEntry(storeCacheKey, cacheKey);
+    if (cached) {
+      console.log('⚡ CACHE HIT', storeCacheKey);
+      return cached;
+    }
+  }
 
-  if (cacheKey && cache[cacheKey]) {
-    console.log('⚡ CACHE HIT');
-    return cache[cacheKey];
+  // Backwards compat: si solo se pasa cacheKey (string) sin storeCacheKey
+  // asumimos que es el GENERATOR_RECIPE_CACHE_KEY (comportamiento anterior)
+  if (cacheKey && !storeCacheKey) {
+    const cache = getRecipeCache();
+    if (cache[cacheKey]) {
+      console.log('⚡ CACHE HIT (legacy)');
+      return cache[cacheKey];
+    }
   }
 
   const payload = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: promptText }]
-      }
-    ],
+    contents: [{ role: 'user', parts: [{ text: promptText }] }],
     generationConfig: {
-      temperature: 0.7
+      temperature: 0.7,
+      maxOutputTokens: maxTokens,   // 🔑 AHORRO PRINCIPAL: limitar tokens de respuesta
     }
   };
 
   try {
     const data = await fetchGeminiContent({ kind: 'text', payload });
-
     const textResult = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!textResult) {
-      throw new Error('La IA no devolvió texto');
-    }
+    if (!textResult) throw new Error('La IA no devolvió texto');
 
     const jsonMatch = textResult.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('Respuesta cruda de Gemini:', textResult);
-      throw new Error('La IA no devolvio un JSON valido');
+      throw new Error('La IA no devolvió un JSON válido');
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    if (cacheKey) {
+    // Guardar en caché
+    if (storeCacheKey && cacheKey) {
+      setCacheEntry(storeCacheKey, cacheKey, parsed);
+      console.log('💾 CACHE SAVE', storeCacheKey);
+    } else if (cacheKey && !storeCacheKey) {
+      // Backwards compat
+      const cache = getRecipeCache();
       cache[cacheKey] = parsed;
       setRecipeCache(cache);
-      console.log('💾 CACHE SAVE');
     }
 
     return parsed;
@@ -176,22 +247,22 @@ export async function callGeminiAPI(promptText, cacheKey = null) {
 }
 
 // -------------------------
-// 👁️ Vision API (imagen)
+// 👁️ Vision API
 // -------------------------
 export async function callGeminiVisionAPI(promptText, base64Image, mimeType) {
   const payload = {
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { text: promptText },
-          { inlineData: { mimeType, data: base64Image } }
-        ]
-      }
-    ]
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: promptText },
+        { inlineData: { mimeType, data: base64Image } }
+      ]
+    }],
+    generationConfig: {
+      maxOutputTokens: 300  // escanear ingredientes no necesita más
+    }
   };
 
   const data = await fetchGeminiContent({ kind: 'vision', payload });
-
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }

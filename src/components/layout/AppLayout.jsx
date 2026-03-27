@@ -2,6 +2,7 @@ import { Bookmark, Calendar, ChefHat, Compass, PlusCircle, Settings, Utensils } 
 import { NavLink, Outlet } from 'react-router-dom';
 import { ROUTES } from '../../routes/paths.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import TipsWidget from '../TipsWidget.jsx';
 
 const NAV_ITEMS = [
   { to: ROUTES.create, label: 'Crear', icon: Utensils },
@@ -63,6 +64,9 @@ export default function AppLayout() {
         <Outlet />
       </main>
 
+      {/* Widget flotante de tips — visible en todas las pantallas */}
+      <TipsWidget />
+
       {/* Bottom nav mobile */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-20 flex">
         {NAV_ITEMS.map((item) => (
@@ -74,7 +78,7 @@ export default function AppLayout() {
                   strokeWidth={isActive ? 2.5 : 1.8}
                   style={isActive ? { color: 'var(--c-primary)' } : {}}
                 />
-                <span className={`text-[9px] font-semibold`}>{item.label}</span>
+                <span className="text-[9px] font-semibold">{item.label}</span>
               </>
             )}
           </NavLink>
