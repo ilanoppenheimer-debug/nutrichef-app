@@ -91,7 +91,32 @@ export function compactProfile(profile) {
   if (profile.useProteinPowder) parts.push('ProtPolvo:Si');
   if (profile.budgetFriendly) parts.push('Economico:Si');
   if (profile.preferredSupermarket) parts.push(`Super:${profile.preferredSupermarket}`);
+  // Localización — guía a la IA para usar nombres locales de ingredientes y marcas
+  if (profile.country && profile.country !== 'Chile') parts.push(`Pais:${profile.country}`);
+  if (profile.language && profile.language !== 'es') parts.push(`Idioma:${profile.language}`);
   return parts.join(' | ');
+}
+
+// Mapa de nombres locales de ingredientes según país
+export const LOCAL_INGREDIENT_NAMES = {
+  Chile:    { aguacate: 'palta', maíz: 'choclo', durazno: 'duraznero', frijoles: 'porotos', papas: 'papas' },
+  México:   { palta: 'aguacate', choclo: 'elote', porotos: 'frijoles', papas: 'papas' },
+  España:   { palta: 'aguacate', choclo: 'maíz', porotos: 'alubias', papas: 'patatas' },
+  Argentina:{ aguacate: 'palta', maíz: 'choclo', frijoles: 'porotos', papas: 'papas' },
+  Colombia: { palta: 'aguacate', choclo: 'mazorca', porotos: 'fríjoles' },
+};
+
+// Instrucción de localización para el prompt
+export function buildLocaleInstruction(profile) {
+  const country = profile.country || 'Chile';
+  const lang = profile.language || 'es';
+  const langNames = { es: 'español', en: 'inglés', he: 'hebreo', pt: 'portugués', fr: 'francés' };
+  const langName = langNames[lang] || 'español';
+  const localNames = LOCAL_INGREDIENT_NAMES[country] || {};
+  const nameExamples = Object.keys(localNames).length
+    ? ` Usa nombres locales de ${country} (ej: ${Object.entries(localNames).slice(0,2).map(([k,v]) => `"${v}" en vez de "${k}"`).join(', ')}).`
+    : '';
+  return `Responde en ${langName}. Adapta ingredientes y marcas para ${country}.${nameExamples}`;
 }
 
 // ── Cooldown ─────────────────────────────────────────────────────────────────
@@ -203,77 +228,4 @@ export async function callGeminiVisionAPI(promptText, base64Image, mimeType) {
   };
   const data = await fetchGeminiContent({ kind: 'vision', payload });
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-// ── refineRecipe ──────────────────────────────────────────────────────────────
-// Envía SOLO la receta original + instrucción de cambio.
-// temperature: 0.3 para cambios menores (fiel al original), 0.6 para cambios mayores.
-// NO reenvía el perfil completo — ahorra ~150 tokens por llamada.
-export async function refineRecipe(originalRecipe, instruction) {
-  if (!originalRecipe || !instruction?.trim()) throw new Error('Faltan datos para refinar');
-
-  // Detectar si es un cambio menor (palabras clave) para bajar temperatura
-  const MINOR_CHANGE_KEYWORDS = ['persona', 'porción', 'gramo', 'cantidad', 'sin ', 'más ', 'menos ', 'ajusta', 'reduce', 'aumenta', 'doble', 'mitad'];
-  const isMinorChange = MINOR_CHANGE_KEYWORDS.some(kw => instruction.toLowerCase().includes(kw));
-  const temperature = isMinorChange ? 0.3 : 0.6;
-
-  // Serialización compacta de la receta — solo lo esencial para el contexto
-  const recipeContext = JSON.stringify({
-    title: originalRecipe.title,
-    ingredients: originalRecipe.ingredients,
-    steps: originalRecipe.steps,
-    macros: originalRecipe.macros,
-    prepTime: originalRecipe.prepTime,
-    cookTime: originalRecipe.cookTime,
-    cuisine: originalRecipe.cuisine,
-  });
-
-  const prompt = `Eres un chef IA. Tienes esta receta:
-${recipeContext}
-
-El usuario pide este cambio específico: "${instruction}"
-
-Aplica SOLO ese cambio. Mantén todo lo demás igual. Devuelve la receta COMPLETA modificada en este JSON exacto:
-${RECIPE_JSON_SCHEMA}`;
-
-  const payload = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature,
-      responseMimeType: 'application/json',
-    }
-  };
-
-  const data = await fetchGeminiContent({ kind: 'text', payload });
-  const textResult = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!textResult) throw new Error('La IA no devolvió texto');
-
-  let parsed;
-  try { parsed = JSON.parse(extractJSON(textResult)); }
-  catch { throw new Error('La IA devolvió JSON malformado al refinar'); }
-
-  // Preservar metadatos de la receta original
-  return {
-    ...parsed,
-    _refinedFrom: originalRecipe.title,
-    _refinedAt: new Date().toISOString(),
-    _refinement: instruction,
-  };
-}
-
-// Detecta si una instrucción de ajuste implica quitar un ingrediente
-// Devuelve el ingrediente a recordar, o null si no aplica
-export function extractDislikedIngredient(instruction) {
-  const patterns = [
-    /sin\s+([a-záéíóúüñ\s]+?)(?:\s|$|,|\.|y )/i,
-    /quita(?:r)?\s+(?:el|la|los|las)?\s*([a-záéíóúüñ\s]+?)(?:\s|$|,|\.)/i,
-    /(?:no me gusta|odio|evita(?:r)?)\s+(?:el|la|los|las)?\s*([a-záéíóúüñ\s]+?)(?:\s|$|,|\.)/i,
-    /reemplaza(?:r)?\s+(?:el|la|los|las)?\s*([a-záéíóúüñ\s]+?)\s+por/i,
-    /cambia(?:r)?\s+(?:el|la|los|las)?\s*([a-záéíóúüñ\s]+?)\s+por/i,
-  ];
-  for (const re of patterns) {
-    const match = instruction.match(re);
-    if (match?.[1]) return match[1].trim().toLowerCase();
-  }
-  return null;
 }

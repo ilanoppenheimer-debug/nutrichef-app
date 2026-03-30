@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, Apple, ChefHat, CheckCircle2, ChevronRight, Dumbbell, ShoppingBag, Target } from 'lucide-react';
+import { Activity, Apple, ChefHat, CheckCircle2, ChevronRight, Dumbbell, Globe, ShoppingBag, Target } from 'lucide-react';
 import { useAppState } from '../context/appState.js';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/paths.js';
@@ -21,7 +21,21 @@ const STEPS = [
   { id: 'sport', title: 'Deporte', icon: Dumbbell },
   { id: 'diet', title: 'Dieta', icon: Apple },
   { id: 'shopping', title: 'Supermercado', icon: ShoppingBag },
+  { id: 'locale', title: 'País/Idioma', icon: Globe },
   { id: 'done', title: '¡Listo!', icon: CheckCircle2 },
+];
+
+
+const COUNTRIES = [
+  'Chile', 'Argentina', 'México', 'Colombia', 'Perú', 'España',
+  'Venezuela', 'Ecuador', 'Uruguay', 'Bolivia', 'Israel', 'Estados Unidos',
+];
+const LANGUAGES = [
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'he', label: 'עברית', flag: '🇮🇱' },
+  { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
 ];
 
 const CHILE_SUPERMARKETS = ['Sin preferencia', 'Líder', 'Jumbo', 'Santa Isabel', 'Unimarc', 'Tottus', 'Tienda especializada (GNC, Nutri Express)'];
@@ -265,8 +279,49 @@ export default function OnboardingView() {
             </div>
           )}
 
-          {/* Paso 6: Listo */}
+
+          {/* Paso 6: País e Idioma */}
           {step === 6 && (
+            <div className="space-y-5">
+              <h2 className="text-xl font-black text-slate-800 dark:text-white">¿Dónde vives y en qué idioma?</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-xs">La IA usará nombres locales de ingredientes y responderá en tu idioma.</p>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">País</label>
+                <select
+                  value={profile.country || 'Chile'}
+                  onChange={e => setProfile(p => ({ ...p, country: e.target.value }))}
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white text-sm outline-none min-h-[48px]"
+                >
+                  {COUNTRIES.map(co => <option key={co}>{co}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Idioma de respuesta</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => setProfile(p => ({ ...p, language: lang.code }))}
+                      className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-semibold transition-all min-h-[48px] ${
+                        (profile.language || 'es') === lang.code
+                          ? 'border-[--c-primary] bg-[--c-primary-light] text-[--c-primary-text]'
+                          : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="text-lg">{lang.flag}</span>
+                      {lang.label}
+                      {(profile.language || 'es') === lang.code && <CheckCircle2 size={13} className="ml-auto" style={{ color: 'var(--c-primary)' }} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Paso 7: Listo */}
+          {step === 7 && (
             <div className="text-center space-y-4">
               <div className="text-5xl">🎉</div>
               <h2 className="text-2xl font-black text-slate-800 dark:text-white">¡Todo listo!</h2>
