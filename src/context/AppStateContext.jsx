@@ -10,14 +10,11 @@ import { readStoredJson, writeStoredJson } from '../lib/gemini.js';
 export const DEFAULT_PROFILE = {
   weight: '', height: '', age: '', gender: 'Femenino',
   activityLevel: '1.2',
-  // Deporte
-  sportType: 'Ninguno',
-  trainingDuration: '60',
-  trainingDaysPerWeek: '3',
-  // Localización
-  country: 'Chile',
-  language: 'es',
-  // Macros
+  // --- nuevo: deporte ---
+  sportType: 'Ninguno',           // Ninguno | Cardio | Fuerza/Powerlifting | Crossfit | HIIT | Deportes de equipo
+  trainingDuration: '60',         // minutos por sesión
+  trainingDaysPerWeek: '3',       // días/semana
+  // ----------------------
   dailyCalories: '', manualCalories: false,
   proteinTarget: '', manualProtein: false,
   fiberTarget: '', manualFiber: false,
@@ -26,7 +23,15 @@ export const DEFAULT_PROFILE = {
   goals: 'Mantenimiento y energia',
   dietaryStyle: 'Ninguna', religiousDiet: 'Ninguna',
   allergies: [], dislikes: [], learnedPreferences: [],
-  preferredSupermarket: '',
+  // Localización
+  country: 'Chile',
+  language: 'es',
+  // Multi-supermercado
+  preferredSupermarkets: [],
+  preferredTimeLimit: 'none',
+  // Modo Pésaj — solo visible si religiousDiet === 'Kosher'
+  pesachMode: false,
+  allowsKitniot: false,   // Kitniot: arroz, legumbres, maíz, soja
 };
 
 // Comprueba si el perfil tiene los datos mínimos para funcionar bien

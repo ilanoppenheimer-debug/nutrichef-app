@@ -5,12 +5,13 @@ import { useAppState } from '../context/appState.js';
 import {
   buildGeneratorRecipeCacheKey,
   buildGeneratorSuggestionsCacheKey,
+  buildLocaleInstruction,
+  buildLocalBrandInstruction,
+  buildSupermarketInstruction,
   buildTimeConstraint,
   callGeminiAPI,
   callGeminiVisionAPI,
   compactProfile,
-  buildLocaleInstruction,
-  buildLocalBrandInstruction,
   GENERATOR_SUGGESTIONS_CACHE_KEY,
   getCooldownMessage,
   getGeminiCooldownUntil,
@@ -171,15 +172,17 @@ export default function GeneratorView() {
 
     const profileStr = compactProfile(profile);
     const localeStr = buildLocaleInstruction(profile);
+    const superStr = buildSupermarketInstruction(profile);
     const brandStr = buildLocalBrandInstruction(profile);
     const timeStr = buildTimeConstraint(maxTime);
-    const cuisineInstruction = cuisine === 'Comida Local' ? `Cocina típica de ${profile.country || 'Chile'}` : cuisine;
+    const cuisineLabel = cuisine === 'Comida Local' ? `Cocina típica de ${profile.country || 'Chile'}` : cuisine;
 
     const prompt = `${localeStr}
-Eres un chef IA. Genera 3 opciones de ${dishType} estilo ${cuisineInstruction} usando: ${ingredients}.
+Eres un chef IA. Genera 3 opciones de ${dishType} estilo ${cuisineLabel} usando: ${ingredients}.
 Perfil: ${profileStr}.
 ${favoriteRecipes.length > 0 ? `Le gustan: ${favoriteRecipes.map(r => r.title).join(', ')}.` : ''}
 ${timeStr}
+${superStr}
 ${brandStr}
 ${complexity.promptInstructions}
 Devuelve SOLO este JSON:
@@ -209,21 +212,23 @@ Devuelve SOLO este JSON:
       return;
     }
 
-    const recipeCacheKey = buildGeneratorRecipeCacheKey({ suggestion: sugg, ingredients, profile });
+    const recipeCacheKey = buildGeneratorRecipeCacheKey({ suggestion: sugg, ingredients, profile, timeLimit: maxTime });
     setGeneratingRecipe(true);
     setError(null); setQuotaNotice(null); setCacheNotice(null);
 
     const profileStr2 = compactProfile(profile);
     const localeStr2 = buildLocaleInstruction(profile);
+    const superStr2 = buildSupermarketInstruction(profile);
     const brandStr2 = buildLocalBrandInstruction(profile);
     const timeStr2 = buildTimeConstraint(maxTime);
-    const cuisineInstruction2 = cuisine === 'Comida Local' ? `Cocina típica de ${profile.country || 'Chile'}` : cuisine;
+    const cuisineLabel2 = cuisine === 'Comida Local' ? `Cocina típica de ${profile.country || 'Chile'}` : cuisine;
 
     const prompt = `${localeStr2}
-Receta completa de ${dishType} estilo ${cuisineInstruction2}: "${sugg.name}".
-${sugg.description}. Ingredientes base: ${ingredients}.
+Receta completa de ${dishType} estilo ${cuisineLabel2}: "${sugg.name}".
+${sugg.description}. Ingredientes disponibles: ${ingredients}.
 Perfil: ${profileStr2}.
 ${timeStr2}
+${superStr2}
 ${brandStr2}
 ${complexity.promptInstructions}
 Devuelve SOLO este JSON:
@@ -344,9 +349,11 @@ Devuelve SOLO este JSON:
             </div>
             {/* ──────────────────────────────────────────────────────── */}
 
-            {/* Selector tiempo máximo */}
+            {/* Selector de tiempo máximo */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">⏱ Tiempo máximo total</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
+                ⏱ Tiempo máximo de preparación
+              </label>
               <div className="grid grid-cols-2 gap-1.5">
                 {TIME_OPTIONS.map(opt => (
                   <button
@@ -358,21 +365,26 @@ Devuelve SOLO este JSON:
                         : 'border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-600 dark:text-slate-300 hover:border-[--c-primary-border]'
                     }`}
                   >
-                    <span>{opt.emoji}</span>
-                    <span>{opt.label}</span>
+                    <span className="text-base">{opt.emoji}</span>
+                    <span className="leading-tight">{opt.label}</span>
                   </button>
                 ))}
               </div>
+              {maxTime !== 'none' && TIME_OPTIONS.find(o => o.value === maxTime)?.hint && (
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 pl-1">
+                  {TIME_OPTIONS.find(o => o.value === maxTime).hint}
+                </p>
+              )}
             </div>
 
             <button
               onClick={getSuggestions}
               disabled={loading || generatingRecipe || isCooldownActive}
-              className="w-full py-3 px-4 text-white rounded-xl font-bold transition-all disabled:opacity-70 flex justify-center items-center gap-2 shadow-sm min-h-[48px]"
+              className="w-full py-3 px-4 text-white rounded-xl font-bold transition-all disabled:opacity-70 flex justify-center items-center gap-2 shadow-sm"
               style={{ background: 'var(--c-primary)' }}
             >
               {loading ? <RefreshCw className="animate-spin" size={20} /> : <Flame size={20} />}
-              {loading ? 'Analizando...' : (isCooldownActive ? cooldownLabel : 'Buscar Opciones')}
+              {loading ? 'Analizando tu cocina...' : (isCooldownActive ? cooldownLabel : 'Buscar Opciones')}
             </button>
 
             {quotaNotice && (

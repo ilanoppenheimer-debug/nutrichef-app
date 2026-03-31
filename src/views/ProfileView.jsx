@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, Dumbbell, HeartPulse, PiggyBank, RefreshCw, Target, Trophy } from 'lucide-react';
+import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, Dumbbell, HeartPulse, Moon, PiggyBank, RefreshCw, ShoppingBag, Star, Target, Trophy } from 'lucide-react';
 import { useAppState } from '../context/appState.js';
-import { calculateTDEE } from '../lib/gemini.js';
+import { calculateTDEE, getSupermarketsForCountry } from '../lib/gemini.js';
 
 const SPORT_OPTIONS = ['Ninguno', 'Cardio', 'Fuerza/Powerlifting', 'Crossfit', 'HIIT', 'Deportes de equipo'];
 const DIETARY_STYLES = ['Ninguna', 'Vegetariana', 'Vegana', 'Pescatariana', 'Keto', 'Paleo'];
@@ -185,6 +185,87 @@ export default function ProfileView() {
           </div>
         </div>
 
+        {/* ── Panel Pésaj — solo visible si Kosher ───────────────────── */}
+        {profile.religiousDiet === 'Kosher' && (
+          <div className="rounded-2xl border-2 overflow-hidden" style={{ borderColor: 'var(--c-primary-border)' }}>
+            {/* Header del panel */}
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: 'var(--c-primary-light)' }}>
+              <div className="flex items-center gap-2">
+                <Moon size={16} style={{ color: 'var(--c-primary)' }} />
+                <h4 className="font-black text-sm" style={{ color: 'var(--c-primary-text)' }}>Modo Pésaj</h4>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/60 dark:bg-black/20" style={{ color: 'var(--c-primary)' }}>Temporal</span>
+              </div>
+              {/* Toggle switch */}
+              <button
+                onClick={() => setProfile({ ...profile, pesachMode: !profile.pesachMode })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${profile.pesachMode ? '' : 'bg-slate-300 dark:bg-gray-600'}`}
+                style={profile.pesachMode ? { background: 'var(--c-primary)' } : {}}
+                aria-label="Activar modo Pésaj"
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${profile.pesachMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Contenido expandido cuando está activo */}
+            {profile.pesachMode && (
+              <div className="p-4 space-y-4 bg-white dark:bg-gray-900">
+                {/* Resumen de restricciones */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+                    <p className="font-bold text-red-700 dark:text-red-300 mb-1">❌ Jametz prohibido</p>
+                    <p className="text-red-600 dark:text-red-400 leading-snug">Trigo, cebada, centeno, avena, espelta y cualquier leudante (levadura, polvo de hornear, bicarbonato).</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                    <p className="font-bold text-amber-700 dark:text-amber-300 mb-1">🔄 Sustituciones auto</p>
+                    <p className="text-amber-600 dark:text-amber-400 leading-snug">Harina común → almendras o fécula de papa · Aceite de girasol → aceite de oliva KP.</p>
+                  </div>
+                </div>
+
+                {/* Switch Kitniot */}
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
+                  <div className="flex-1 min-w-0 pr-4">
+                    <p className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
+                      <Star size={13} className="text-amber-500" />
+                      ¿Consumes Kitniot?
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                      Kitniot: arroz, legumbres (porotos, garbanzos, lentejas), maíz/choclo, soja.
+                      Tradición sefardí los permite; askenazí los prohíbe.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setProfile({ ...profile, allowsKitniot: !profile.allowsKitniot })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${profile.allowsKitniot ? 'bg-green-500' : 'bg-slate-300 dark:bg-gray-600'}`}
+                    aria-label="Permitir Kitniot"
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${profile.allowsKitniot ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Estado actual */}
+                <div className={`p-3 rounded-xl text-xs leading-relaxed ${profile.allowsKitniot ? 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 text-green-700 dark:text-green-300' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-blue-700 dark:text-blue-300'}`}>
+                  {profile.allowsKitniot
+                    ? '✅ Kitniot permitido (tradición sefardí). Puedes usar arroz y legumbres, pero nunca Jametz.'
+                    : '🔵 Sin Kitniot (tradición askenazí). Las recetas excluirán arroz, legumbres, maíz y soja además del Jametz.'}
+                </div>
+
+                {/* Aviso de marcas KP */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-xs text-slate-600 dark:text-slate-400">
+                  <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">🏷️ Certificación Kasher lePésaj (KP)</p>
+                  <p className="leading-snug">Cada ingrediente envasado debe tener el sello <strong>KP</strong> o <strong>Kasher lePésaj</strong>. La app señalará cuando no haya certeza de certificación.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Estado inactivo — resumen */}
+            {!profile.pesachMode && (
+              <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-gray-900">
+                Activa este modo durante Pésaj para recetas sin Jametz con sustituciones automáticas y marcas KP.
+              </div>
+            )}
+          </div>
+        )}
+
         <div>
           <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1"><AlertTriangle size={12} className="text-red-500" /> Alergias e Intolerancias</label>
           <div className="flex flex-wrap gap-2">
@@ -220,6 +301,48 @@ export default function ProfileView() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Supermercados preferidos (multi-select) ─────────────────── */}
+      <section className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm">
+        <h3 className="text-base font-black text-slate-800 dark:text-white mb-1 flex items-center gap-2">
+          <ShoppingBag size={16} className="text-emerald-500" /> Supermercados preferidos
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          La IA priorizará marcas disponibles en los que selecciones. Selección múltiple.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {getSupermarketsForCountry(profile.country || 'Chile').map(s => {
+            const selected = (profile.preferredSupermarkets || []).includes(s);
+            return (
+              <button
+                key={s}
+                onClick={() => {
+                  const current = profile.preferredSupermarkets || [];
+                  setProfile({
+                    ...profile,
+                    preferredSupermarkets: selected
+                      ? current.filter(x => x !== s)
+                      : [...current, s],
+                  });
+                }}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-xs font-semibold transition-all min-h-[44px] text-left ${
+                  selected
+                    ? 'border-[--c-primary] bg-[--c-primary-light] text-[--c-primary-text]'
+                    : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 bg-white dark:bg-gray-800 hover:border-[--c-primary-border]'
+                }`}
+              >
+                <span className="flex-1 leading-tight">{s}</span>
+                {selected && <CheckCircle2 size={13} className="shrink-0" style={{ color: 'var(--c-primary)' }} />}
+              </button>
+            );
+          })}
+        </div>
+        {(profile.preferredSupermarkets || []).length > 0 && (
+          <div className="mt-3 p-3 rounded-xl text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
+            ✓ Activos: <strong>{profile.preferredSupermarkets.join(', ')}</strong>
           </div>
         )}
       </section>

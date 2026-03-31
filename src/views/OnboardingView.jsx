@@ -3,7 +3,7 @@ import { Activity, Apple, BookOpen, ChefHat, CheckCircle2, ChevronRight, Dumbbel
 import { useAppState } from '../context/appState.js';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/paths.js';
-import { calculateTDEE } from '../lib/gemini.js';
+import { calculateTDEE, getSupermarketsForCountry } from '../lib/gemini.js';
 import { SAFE_BRANDS } from '../lib/brandDatabase.js';
 
 const SPORT_OPTIONS = ['Ninguno', 'Cardio', 'Fuerza/Powerlifting', 'Crossfit', 'HIIT', 'Deportes de equipo'];
@@ -15,17 +15,16 @@ const GOAL_OPTIONS = [
 ];
 
 const STEPS = [
-  { id: 'welcome', title: '¡Bienvenido!', icon: ChefHat },
-  { id: 'goal', title: 'Tu objetivo', icon: Target },
-  { id: 'body', title: 'Biometría', icon: Activity },
-  { id: 'sport', title: 'Deporte', icon: Dumbbell },
-  { id: 'diet', title: 'Dieta', icon: Apple },
-  { id: 'religion', title: 'Religión/Ética', icon: BookOpen },
-  { id: 'shopping', title: 'Supermercado', icon: ShoppingBag },
-  { id: 'done', title: '¡Listo!', icon: CheckCircle2 },
+  { id: 'welcome',   title: '¡Bienvenido!',     icon: ChefHat },
+  { id: 'goal',      title: 'Tu objetivo',      icon: Target },
+  { id: 'body',      title: 'Biometría',        icon: Activity },
+  { id: 'sport',     title: 'Deporte',          icon: Dumbbell },
+  { id: 'diet',      title: 'Dieta',            icon: Apple },
+  { id: 'religion',  title: 'Religión/Ética',   icon: BookOpen },
+  { id: 'shopping',  title: 'Supermercado',     icon: ShoppingBag },
+  { id: 'done',      title: '¡Listo!',          icon: CheckCircle2 },
 ];
 
-const CHILE_SUPERMARKETS = ['Sin preferencia', 'Líder', 'Jumbo', 'Santa Isabel', 'Unimarc', 'Tottus', 'Tienda especializada (GNC, Nutri Express)'];
 
 export default function OnboardingView() {
   const { profile, setProfile } = useAppState();
@@ -242,73 +241,82 @@ export default function OnboardingView() {
           )}
 
 
-          {/* Paso 5: Dieta religiosa y ética */}
+          {/* Paso 5: Restricciones religiosas y éticas */}
           {step === 5 && (
             <div className="space-y-4">
               <h2 className="text-xl font-black text-slate-800 dark:text-white">Restricciones religiosas y éticas</h2>
               <p className="text-slate-500 dark:text-slate-400 text-xs">
-                Fundamental para que la IA nunca sugiera ingredientes no permitidos. Opcional — puedes saltarlo.
+                La IA nunca sugerirá ingredientes no permitidos. Puedes saltarte este paso.
               </p>
               <div className="space-y-2">
                 {[
-                  { value: 'Ninguna', emoji: '—', desc: 'Sin restricciones religiosas' },
-                  { value: 'Kosher', emoji: '✡️', desc: 'Sin mezcla carne/lácteos · carne certificada' },
-                  { value: 'Halal', emoji: '☪️', desc: 'Sin cerdo ni alcohol · carne certificada' },
-                  { value: 'Hindú (Sin carne de res)', emoji: '🕉️', desc: 'Sin carne de res ni derivados' },
-                  { value: 'Jainista', emoji: '🟡', desc: 'Sin carne, huevos ni raíces (ajo, cebolla)' },
+                  { value: 'Ninguna',                 emoji: '—',  desc: 'Sin restricciones religiosas' },
+                  { value: 'Kosher',                  emoji: '✡️', desc: 'Sin mezcla carne/lácteos · carne certificada' },
+                  { value: 'Halal',                   emoji: '☪️', desc: 'Sin cerdo ni alcohol · carne certificada' },
+                  { value: 'Hindú (Sin carne de res)',emoji: '🕉️', desc: 'Sin carne de res ni derivados' },
+                  { value: 'Jainista',                emoji: '🟡', desc: 'Sin carne, huevos ni raíces (ajo, cebolla)' },
                 ].map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setProfile(p => ({ ...p, religiousDiet: opt.value }))}
-                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${ profile.religiousDiet === opt.value ? 'border-[--c-primary] bg-[--c-primary-light]' : 'border-slate-200 dark:border-gray-700 hover:border-[--c-primary-border]' }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 transition-all text-left ${profile.religiousDiet === opt.value ? 'border-[--c-primary] bg-[--c-primary-light]' : 'border-slate-200 dark:border-gray-700 hover:border-[--c-primary-border]'}`}
                   >
-                    <span className="text-2xl shrink-0">{opt.emoji}</span>
+                    <span className="text-xl shrink-0">{opt.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm text-slate-800 dark:text-white">{opt.value}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{opt.desc}</p>
                     </div>
-                    {profile.religiousDiet === opt.value && <CheckCircle2 size={16} className="shrink-0" style={{ color: 'var(--c-primary)' }} />}
+                    {profile.religiousDiet === opt.value && <CheckCircle2 size={15} className="shrink-0" style={{ color: 'var(--c-primary)' }} />}
                   </button>
                 ))}
               </div>
               {profile.religiousDiet === 'Kosher' && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-xs text-blue-700 dark:text-blue-300">
-                  ✡️ La app buscará marcas Kosher certificadas en <strong>{profile.country || 'tu país'}</strong>.
-                </div>
-              )}
-              {profile.religiousDiet === 'Halal' && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
-                  ☪️ Las recetas excluirán cerdo, alcohol y carnes no certificadas Halal.
+                  ✡️ La app sugerirá marcas Kosher disponibles en <strong>{profile.country || 'tu país'}</strong>.
                 </div>
               )}
             </div>
           )}
 
-          {/* Paso 6: Supermercado */}
+          {/* Paso 6: Supermercados (multi-select dinámico por país) */}
           {step === 6 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-black text-slate-800 dark:text-white">¿Dónde compras habitualmente?</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-xs">Así la IA puede sugerirte marcas que realmente encuentras cerca. Opcional.</p>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white">¿Dónde compras?</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-xs">
+                Selecciona uno o más. La IA priorizará marcas disponibles ahí. Opcional.
+              </p>
               <div className="grid grid-cols-2 gap-2">
-                {CHILE_SUPERMARKETS.map(super_ => (
-                  <button
-                    key={super_}
-                    onClick={() => setProfile(p => ({ ...p, preferredSupermarket: super_ === 'Sin preferencia' ? '' : super_ }))}
-                    className={`p-3 rounded-xl border-2 text-sm font-semibold transition-all text-left ${
-                      (profile.preferredSupermarket || 'Sin preferencia') === super_
-                        ? 'border-[--c-primary] bg-[--c-primary-light] text-[--c-primary-text]'
-                        : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-[--c-primary-border]'
-                    }`}
-                  >
-                    {super_}
-                  </button>
-                ))}
+                {getSupermarketsForCountry(profile.country || 'Chile').map(s => {
+                  const selected = (profile.preferredSupermarkets || []).includes(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setProfile(p => {
+                        const current = p.preferredSupermarkets || [];
+                        return {
+                          ...p,
+                          preferredSupermarkets: selected
+                            ? current.filter(x => x !== s)
+                            : [...current, s],
+                        };
+                      })}
+                      className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-semibold transition-all min-h-[48px] text-left ${selected ? 'border-[--c-primary] bg-[--c-primary-light] text-[--c-primary-text]' : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-[--c-primary-border]'}`}
+                    >
+                      <span className="flex-1 leading-tight">{s}</span>
+                      {selected && <CheckCircle2 size={14} className="shrink-0" style={{ color: 'var(--c-primary)' }} />}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500">Las sugerencias de marcas priorizarán lo que encuentras en tu supermercado.</p>
+              {(profile.preferredSupermarkets || []).length > 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  ✓ Seleccionados: <strong>{profile.preferredSupermarkets.join(', ')}</strong>
+                </p>
+              )}
             </div>
           )}
 
-          {/* Paso 7: Listo */}
+{/* Paso 7: Listo */}
           {step === 7 && (
             <div className="text-center space-y-4">
               <div className="text-5xl">🎉</div>

@@ -90,7 +90,14 @@ export function compactProfile(profile) {
   if (profile.learnedPreferences?.length) parts.push(`IA:${profile.learnedPreferences.join('|')}`);
   if (profile.useProteinPowder) parts.push('ProtPolvo:Si');
   if (profile.budgetFriendly) parts.push('Economico:Si');
-  if (profile.preferredSupermarket) parts.push(`Super:${profile.preferredSupermarket}`);
+  // Multi-supermercado (array) con fallback a string legacy
+  if (profile.preferredSupermarkets?.length) parts.push(`Supers:${profile.preferredSupermarkets.join(',')}`);
+  else if (profile.preferredSupermarket) parts.push(`Super:${profile.preferredSupermarket}`);
+  // Localización
+  if (profile.country && profile.country !== 'Chile') parts.push(`Pais:${profile.country}`);
+  if (profile.language && profile.language !== 'es') parts.push(`Idioma:${profile.language}`);
+  // Pésaj
+  if (profile.pesachMode) parts.push(`Pesaj:Si|Kitniot:${profile.allowsKitniot ? 'Si' : 'No'}`);
   return parts.join(' | ');
 }
 
@@ -111,8 +118,8 @@ export function getRecipeCache() { return getCache(GENERATOR_RECIPE_CACHE_KEY); 
 export function setRecipeCache(c) { setCache(GENERATOR_RECIPE_CACHE_KEY, c); }
 
 // ── Cache Keys ────────────────────────────────────────────────────────────────
-export function buildGeneratorRecipeCacheKey({ suggestion, ingredients, profile }) {
-  return JSON.stringify({ n: suggestion.name, i: ingredients.trim().toLowerCase(), g: profile.goals, d: profile.dietaryStyle, a: profile.allergies, cal: profile.dailyCalories });
+export function buildGeneratorRecipeCacheKey({ suggestion, ingredients, profile, timeLimit }) {
+  return JSON.stringify({ n: suggestion.name, i: ingredients.trim().toLowerCase(), g: profile.goals, d: profile.dietaryStyle, a: profile.allergies, cal: profile.dailyCalories, t: timeLimit || 'none', p: profile.pesachMode || false });
 }
 export function buildGeneratorSuggestionsCacheKey({ ingredients, profile, dishType, difficulty, cuisine }) {
   return JSON.stringify({ i: ingredients.trim().toLowerCase(), g: profile.goals, d: profile.dietaryStyle, a: profile.allergies, dt: dishType || '', dif: difficulty || '', c: cuisine || '' });
@@ -205,165 +212,223 @@ export async function callGeminiVisionAPI(promptText, base64Image, mimeType) {
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-// ── Localización ──────────────────────────────────────────────────────────────
-// Nombres de ingredientes por país — evita que la IA use términos de otro país
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPERMERCADOS POR PAÍS
+// ─────────────────────────────────────────────────────────────────────────────
+export const SUPERMARKETS_BY_COUNTRY = {
+  Chile:        ['Jumbo', 'Líder', 'Tottus', 'Unimarc', 'Santa Isabel', 'Costco', 'GNC / Nutri Express'],
+  Argentina:    ['Carrefour', 'Coto', 'Día', 'Disco', 'Jumbo', 'La Anónima', 'Walmart'],
+  México:       ['Walmart', 'Soriana', 'Chedraui', 'La Comer', 'City Market', 'Costco', "Sam's Club"],
+  Colombia:     ['Éxito', 'Carulla', 'Jumbo', 'Metro', 'D1', 'Ara', 'Olímpica'],
+  España:       ['Mercadona', 'Carrefour', 'Lidl', 'Aldi', 'El Corte Inglés', 'Dia', 'Eroski'],
+  Perú:         ['Wong', 'Metro', 'Plaza Vea', 'Tottus', 'Vivanda', 'Mass'],
+  Uruguay:      ['Disco', 'Géant', 'Tienda Inglesa', 'Devoto', 'El Dorado'],
+  Ecuador:      ['Supermaxi', 'Megamaxi', 'Mi Comisariato', 'Gran Akí', 'TIA'],
+  Israel:       ['Shufersal', 'Rami Levy', 'Victory', 'Osher Ad', 'Mega', 'Yochananof'],
+  'Estados Unidos': ['Walmart', 'Target', 'Costco', 'Whole Foods', "Trader Joe's", 'Kroger', 'Aldi'],
+};
+
+export function getSupermarketsForCountry(country) {
+  return SUPERMARKETS_BY_COUNTRY[country] || SUPERMARKETS_BY_COUNTRY['Chile'];
+}
+
+export function buildSupermarketInstruction(profile) {
+  const supers = profile.preferredSupermarkets?.length
+    ? profile.preferredSupermarkets
+    : profile.preferredSupermarket ? [profile.preferredSupermarket] : [];
+  if (!supers.length) return '';
+  return `Prioriza marcas disponibles en: ${supers.join(', ')} (${profile.country || 'Chile'}).`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCALIZACIÓN
+// ─────────────────────────────────────────────────────────────────────────────
 export const LOCAL_INGREDIENT_NAMES = {
-  Chile: {
-    fresa: 'frutilla', aguacate: 'palta', calabaza: 'zapallo',
-    maíz: 'choclo', alubia: 'poroto', judía: 'poroto',
-    melocotón: 'durazno', albaricoque: 'damasco', plátano: 'plátano (banana)',
-    boniato: 'camote', patata: 'papa', tortilla: 'tortilla de maíz',
-    cacahuete: 'maní', zumo: 'jugo', nata: 'crema',
-  },
-  México: {
-    palta: 'aguacate', choclo: 'elote', poroto: 'frijol',
-    frutilla: 'fresa', papa: 'papa', damasco: 'chabacano',
-    maní: 'cacahuate', zumo: 'jugo', nata: 'crema',
-  },
-  España: {
-    palta: 'aguacate', choclo: 'maíz', poroto: 'alubias',
-    papa: 'patata', camote: 'boniato', frutilla: 'fresa',
-    maní: 'cacahuete', jugo: 'zumo', crema: 'nata',
-  },
-  Argentina: {
-    aguacate: 'palta', maíz: 'choclo', judía: 'poroto',
-    patata: 'papa', boniato: 'batata', fresa: 'frutilla',
-    melocotón: 'durazno', zumo: 'jugo',
-  },
-  Colombia: {
-    palta: 'aguacate', choclo: 'mazorca', poroto: 'fríjol',
-    papa: 'papa', patata: 'papa', frutilla: 'fresa',
-    maní: 'maní', zumo: 'jugo',
-  },
+  Chile:     { fresa: 'frutilla', aguacate: 'palta', calabaza: 'zapallo', maíz: 'choclo', alubia: 'poroto', melocotón: 'durazno', patata: 'papa', cacahuete: 'maní', zumo: 'jugo', nata: 'crema', platano: 'plátano' },
+  México:    { palta: 'aguacate', choclo: 'elote', poroto: 'frijol', frutilla: 'fresa', maní: 'cacahuate', zumo: 'jugo' },
+  España:    { palta: 'aguacate', choclo: 'maíz', poroto: 'alubias', papa: 'patata', frutilla: 'fresa', maní: 'cacahuete', jugo: 'zumo' },
+  Argentina: { aguacate: 'palta', maíz: 'choclo', judía: 'poroto', patata: 'papa', fresa: 'frutilla', melocotón: 'durazno' },
+  Colombia:  { palta: 'aguacate', choclo: 'mazorca', poroto: 'fríjol', frutilla: 'fresa' },
 };
 
-// Marcas Kosher disponibles por país (para la guía de compra)
 export const KOSHER_BRANDS_BY_COUNTRY = {
-  Chile: ['Kirkland Signature (Costco)', 'Philadelphia (certificado)', 'Nestlé línea Kosher', 'Unilever productos certificados'],
-  Argentina: ['Kosher Buenos Aires', 'Lácteos Kosher Argentina', 'Philadelphia'],
-  México: ['Borden Kosher', 'Philadelphia', 'Nestlé certificados'],
-  Israel: ['Tnuva', 'Strauss', 'Osem', 'Telma'],
-  España: ['Carrefour Kosher', 'Philadelphia', 'Rakusens'],
-  'Estados Unidos': ['Kirkland Signature', 'Philadelphia', 'Nathan\'s', 'Manischewitz'],
+  Chile:    ['Kirkland Signature (Costco)', 'Philadelphia (cert.)', 'Nestlé línea Kosher', 'Empire Kosher (importado)'],
+  Israel:   ['Tnuva', 'Strauss', 'Osem', 'Telma', 'Yotvata'],
+  Argentina:['Philadelphia', 'Kosher Buenos Aires', 'Lácteos Kosher Arg.'],
+  México:   ['Borden Kosher', 'Philadelphia', 'Nestlé certificados'],
+  España:   ['Philadelphia', 'Rakusens', 'Carrefour Kosher'],
+  'Estados Unidos': ['Kirkland Signature', 'Philadelphia', 'Manischewitz', "Nathan's"],
 };
 
-// Marcas Halal disponibles por país
+// Marcas con certificación específica Kasher lePésaj
+export const PESACH_BRANDS_BY_COUNTRY = {
+  Chile:    ['Kedem (importado)', 'Manischewitz (importado)', 'Elite Kasher lePésaj', 'productos con sello "KP" en Costco'],
+  Israel:   ['Tnuva KP', 'Osem lePésaj', 'Sugat KP', 'Strauss lePésaj'],
+  Argentina:['Productos con sello "KP" o "Kasher lePésaj" de supervisión local (ACILBA/Va\'ad)'],
+  'Estados Unidos': ['Manischewitz', 'Streit\'s', 'Kedem', 'Empire Kosher KP', 'Whole Foods KP line'],
+  España:   ['Kedem (importado)', 'supervisión Comunidad Judía Madrid'],
+};
+
 export const HALAL_BRANDS_BY_COUNTRY = {
-  Chile: ['Sadia Halal', 'carnes certificadas en supermercados árabes', 'Mr. Chicken Halal'],
-  Argentina: ['La Preferida Halal', 'carnicerías certificadas'],
-  España: ['Carrefour Halal', 'Mercadona certificados Halal'],
+  Chile:    ['Sadia Halal', 'Mr. Chicken Halal', 'carnicerías certificadas'],
+  Argentina:['La Preferida Halal', 'carnicerías certificadas Buenos Aires'],
+  España:   ['Carrefour Halal', 'Mercadona cert. Halal'],
   Colombia: ['Zenú Halal', 'carnicerías certificadas'],
 };
 
-// Genera instrucción de localización para el prompt
 export function buildLocaleInstruction(profile) {
   const country = profile.country || 'Chile';
   const lang = profile.language || 'es';
   const langNames = { es: 'español', en: 'inglés', he: 'hebreo', pt: 'portugués', fr: 'francés' };
-  const langName = langNames[lang] || 'español';
   const localNames = LOCAL_INGREDIENT_NAMES[country] || {};
-
-  // Solo incluir 2-3 ejemplos para no saturar el prompt
-  const examples = Object.entries(localNames).slice(0, 3)
-    .map(([k, v]) => `"${v}" (no "${k}")`)
-    .join(', ');
-
-  const examplesStr = examples ? ` Usa términos locales: ${examples}.` : '';
-  return `Responde en ${langName}. Adapta para ${country}.${examplesStr}`;
+  const examples = Object.entries(localNames).slice(0, 2).map(([k, v]) => `"${v}" no "${k}"`).join(', ');
+  return `Responde en ${langNames[lang] || 'español'}. Adapta para ${country}.${examples ? ` Usa: ${examples}.` : ''}`;
 }
 
-// Genera la instrucción de marca local según dieta religiosa y país
 export function buildLocalBrandInstruction(profile) {
   const country = profile.country || 'Chile';
-  const diet = profile.religiousDiet;
-
-  if (diet === 'Kosher') {
-    const brands = KOSHER_BRANDS_BY_COUNTRY[country] || KOSHER_BRANDS_BY_COUNTRY['Chile'];
-    return `Para certificación Kosher en ${country}, marcas disponibles: ${brands.join(', ')}.`;
+  if (profile.pesachMode) {
+    const brands = PESACH_BRANDS_BY_COUNTRY[country] || PESACH_BRANDS_BY_COUNTRY['Chile'];
+    return `PÉSAJ: Solo productos con certificación "Kasher lePésaj" (sello KP). En ${country}: ${brands.join(', ')}. Si no hay certeza de certificación KP de una marca, añade el aviso: "⚠️ Verificar sello Kasher lePésaj en el empaque".`;
   }
-  if (diet === 'Halal') {
+  if (profile.religiousDiet === 'Kosher') {
+    const brands = KOSHER_BRANDS_BY_COUNTRY[country] || KOSHER_BRANDS_BY_COUNTRY['Chile'];
+    return `Marcas Kosher en ${country}: ${brands.join(', ')}.`;
+  }
+  if (profile.religiousDiet === 'Halal') {
     const brands = HALAL_BRANDS_BY_COUNTRY[country] || [];
-    return brands.length
-      ? `Para certificación Halal en ${country}: ${brands.join(', ')}.`
-      : '';
+    return brands.length ? `Marcas Halal en ${country}: ${brands.join(', ')}.` : '';
   }
   return '';
 }
 
-// ── Filtro de tiempo de preparación ──────────────────────────────────────────
-export const TIME_OPTIONS = [
-  { value: '15', label: '15 min · Express', emoji: '⚡' },
-  { value: '30', label: '30 min · Estándar', emoji: '🕐' },
-  { value: '60', label: '60 min · Elaborado', emoji: '🍳' },
-  { value: 'none', label: 'Sin límite', emoji: '∞' },
+// ─────────────────────────────────────────────────────────────────────────────
+// MODO PÉSAJ
+// ─────────────────────────────────────────────────────────────────────────────
+// Ingredientes prohibidos en Pésaj (Jametz y derivados)
+const PESACH_FORBIDDEN_BASE = [
+  'harina de trigo', 'harina de cebada', 'harina de centeno', 'harina de avena', 'harina de espelta',
+  'harina común', 'harina 000', 'harina 0000',
+  'levadura', 'levadura química', 'polvo de hornear', 'bicarbonato de sodio',
+  'pan', 'pasta', 'fideos', 'galletas comunes', 'crackers comunes',
+  'cerveza', 'whisky', 'bourbon',
 ];
 
-// Instrucción de tiempo para incluir en el prompt
-export function buildTimeConstraint(maxTime) {
-  if (!maxTime || maxTime === 'none') return '';
-  return `TIEMPO MÁXIMO: La receta DEBE prepararse en menos de ${maxTime} minutos totales (prep + cocción combinados). Si no es posible, elige una versión más rápida del plato.`;
+// Ingredientes prohibidos adicionales si NO consume Kitniot
+const KITNIOT_FORBIDDEN = [
+  'arroz', 'frijoles', 'lentejas', 'garbanzos', 'porotos', 'soja', 'maíz', 'choclo', 'elote',
+  'maní', 'cacahuete', 'cacahuate', 'semillas de sésamo', 'semillas de mostaza',
+  'aceite de soja', 'aceite de maravilla', 'aceite de girasol', 'aceite de maíz',
+  'harina de maíz', 'almidón de maíz', 'fécula de maíz', 'polenta',
+];
+
+// Sustituciones inteligentes para Pésaj
+const PESACH_SUBSTITUTIONS = {
+  'harina común': 'harina de almendras o fécula de papa (Maizena KP)',
+  'harina de trigo': 'harina de almendras, harina de coco o fécula de papa',
+  'pan rallado': 'matzá molida (farfel) o almendras molidas',
+  'pasta': 'quinoa o fideos de matzá KP',
+  'levadura': 'huevos batidos a punto nieve para dar volumen',
+  'aceite de girasol': 'aceite de oliva virgen extra KP o aceite de coco KP',
+  'aceite de maravilla': 'aceite de oliva virgen extra KP',
+  'aceite de soja': 'aceite de oliva KP',
+  'maicena / fécula de maíz': 'fécula de papa (Maizena de papa) KP',
+  'vinagre blanco': 'vinagre de vino KP',
+};
+
+// Construye la instrucción completa de Pésaj para el prompt
+export function buildPesachInstruction(profile) {
+  if (!profile.pesachMode) return '';
+
+  const kitniot = profile.allowsKitniot;
+
+  const forbiddenList = kitniot
+    ? PESACH_FORBIDDEN_BASE
+    : [...PESACH_FORBIDDEN_BASE, ...KITNIOT_FORBIDDEN];
+
+  const substitutionsText = Object.entries(PESACH_SUBSTITUTIONS)
+    .slice(0, 6)
+    .map(([orig, sub]) => `  • ${orig} → ${sub}`)
+    .join('\n');
+
+  const kitniotLine = kitniot
+    ? 'KITNIOT PERMITIDO: Puedes usar arroz, legumbres, maíz y soja, pero NUNCA los granos leudantes listados arriba.'
+    : 'KITNIOT PROHIBIDO: No usar arroz, legumbres (garbanzos, lentejas, frijoles/porotos), maíz, soja ni sus derivados.';
+
+  return `
+━━━ MODO PÉSAJ ACTIVO ━━━
+JAMETZ PROHIBIDO ESTRICTAMENTE: ${PESACH_FORBIDDEN_BASE.slice(0, 6).join(', ')} y cualquier derivado leudante.
+${kitniotLine}
+INGREDIENTES COMPLETAMENTE PROHIBIDOS EN ESTA RECETA: ${forbiddenList.join(', ')}.
+SUSTITUCIONES OBLIGATORIAS (aplica automáticamente):
+${substitutionsText}
+IMPORTANTE: Cada ingrediente que pueda generar duda debe incluir el aviso "⚠️ Verificar sello KP en el empaque".
+━━━━━━━━━━━━━━━━━━━━━━━━`;
 }
 
-// ── Detección de intención de búsqueda ───────────────────────────────────────
-// Determina si el usuario busca un plato/receta específica (modo literal)
-// o una idea general (modo creativo).
-// Modo literal → la IA devuelve SOLO la receta exacta sin acompañamientos.
-// Modo creativo → la IA puede sugerir variaciones.
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTRO DE TIEMPO
+// ─────────────────────────────────────────────────────────────────────────────
+export const TIME_OPTIONS = [
+  { value: 'none', label: 'Sin límite',         emoji: '∞',  hint: '' },
+  { value: '15',   label: 'Express · 15 min',   emoji: '⚡', hint: 'Sin hornear ni marinar. Máx. 4 ingredientes.' },
+  { value: '30',   label: 'Estándar · 30 min',  emoji: '🕐', hint: 'Técnicas básicas. Sin procesos lentos.' },
+  { value: '60',   label: 'Elaborado · 60 min', emoji: '🍳', hint: 'Puede incluir horneado o marinado corto.' },
+];
+
+export function buildTimeConstraint(maxTime) {
+  if (!maxTime || maxTime === 'none') return '';
+  const hints = {
+    '15': 'Evita horneado, marinados, masas o procesos de más de 15 minutos.',
+    '30': 'Evita marinados de más de 20 minutos y horneados lentos.',
+    '60': 'Puede incluir horneado breve, pero el total no debe superar 60 minutos.',
+  };
+  return `TIEMPO MÁXIMO ESTRICTO: La receta DEBE completarse en ${maxTime} minutos totales (preparación + cocción combinados). ${hints[maxTime] || ''}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DETECCIÓN DE INTENCIÓN Y BÚSQUEDA
+// ─────────────────────────────────────────────────────────────────────────────
+const LITERAL_SIGNALS = [
+  'en airfryer', 'en air fryer', 'al vapor', 'a la plancha', 'al horno',
+  'marinado', 'asado', 'gratinado', 'al wok', 'salteado', 'frito',
+  'falafel', 'shakshuka', 'ramen', 'pad thai', 'sushi', 'ceviche',
+  'hummus', 'guacamole', 'tzatziki', 'chimichurri', 'pesto', 'carbonara',
+  'sin ', 'con solo', 'solo con', 'únicamente',
+];
+const CREATIVE_SIGNALS = [
+  'algo', 'ideas', 'sugerencias', 'qué puedo', 'qué hacer', 'opciones',
+  'para cenar', 'para almorzar', 'con lo que tengo', 'sorpréndeme', 'antojo',
+];
+
 export function detectSearchIntent(query) {
   if (!query?.trim()) return 'creative';
   const q = query.trim().toLowerCase();
-
-  // Señales de búsqueda literal — el usuario sabe exactamente lo que quiere
-  const LITERAL_SIGNALS = [
-    // Métodos de cocción específicos
-    'en airfryer', 'en air fryer', 'al vapor', 'a la plancha', 'al horno', 'frito',
-    'hervido', 'marinado', 'asado', 'gratinado', 'al wok', 'en olla',
-    // Platos con nombre propio o muy específicos
-    'falafel', 'shakshuka', 'ramen', 'pad thai', 'tacos de', 'sushi', 'ceviche',
-    'hummus', 'guacamole', 'tzatziki', 'chimichurri', 'pesto', 'carbonara',
-    // Modificadores precisos
-    'sin ', 'con solo', 'solo con', 'únicamente', 'solamente',
-    // Números (sugiere precisión: "2 ingredientes", "3 pasos")
-  ];
-
-  // Señales de búsqueda creativa — el usuario quiere ideas
-  const CREATIVE_SIGNALS = [
-    'algo', 'ideas', 'sugerencias', 'qué puedo', 'qué hacer', 'opciones',
-    'para cenar', 'para almorzar', 'con lo que tengo', 'creativo', 'diferente',
-    'sorpréndeme', 'antojo',
-  ];
-
   const hasLiteral = LITERAL_SIGNALS.some(s => q.includes(s));
   const hasCreative = CREATIVE_SIGNALS.some(s => q.includes(s));
-
-  // Si hay señal literal explícita, priorizar modo literal
   if (hasLiteral && !hasCreative) return 'literal';
-  // Si tiene ambas o solo creativo, modo creativo
   if (hasCreative) return 'creative';
-
-  // Heurística adicional: queries cortas y específicas (<= 3 palabras) son literales
-  const wordCount = q.split(/\s+/).filter(Boolean).length;
-  if (wordCount <= 3 && !hasCreative) return 'literal';
-
+  if (q.split(/\s+/).filter(Boolean).length <= 3) return 'literal';
   return 'creative';
 }
 
-// Construye el prompt según el modo detectado
-export function buildSearchPrompt({ query, mode, profileStr, localeStr, brandInstruction, favoritesStr }) {
+export function buildSearchPrompt({ query, mode, profileStr, localeStr, supermarketInstruction, brandInstruction, favoritesStr, pesachInstruction }) {
   const favPart = favoritesStr ? ` Le gustan: ${favoritesStr}.` : '';
+  const superPart = supermarketInstruction ? `\n${supermarketInstruction}` : '';
   const brandPart = brandInstruction ? `\n${brandInstruction}` : '';
+  const pesachPart = pesachInstruction ? `\n${pesachInstruction}` : '';
 
   if (mode === 'literal') {
     return `${localeStr}
 El usuario busca EXACTAMENTE: "${query}".
-Perfil: ${profileStr}.${favPart}${brandPart}
-MODO LITERAL: Devuelve SOLO la receta exacta que pidió. NO añadas acompañamientos, ensaladas ni menús completos a menos que el usuario los pida expresamente. Si especificó un método de cocción (ej: "en airfryer"), úsalo obligatoriamente.
-Devuelve SOLO este JSON con 1 receta:
-{"suggestions":[{"id":1,"name":"[nombre exacto tal como lo pidió]","type":"[método si lo especificó]","description":"Receta exacta sin variaciones"}]}`;
+Perfil: ${profileStr}.${favPart}${superPart}${brandPart}${pesachPart}
+MODO LITERAL: Devuelve SOLO la receta exacta pedida. NO añadas acompañamientos ni menús completos.
+Devuelve SOLO este JSON con 1 resultado:
+{"suggestions":[{"id":1,"name":"[nombre exacto]","type":"[método]","description":"Receta exacta sin variaciones"}]}`;
   }
 
   return `${localeStr}
-El usuario busca: "${query}". Genera 3 opciones adaptadas a su perfil: ${profileStr}.${favPart}${brandPart}
+El usuario busca: "${query}". Genera 3 opciones adaptadas a su perfil: ${profileStr}.${favPart}${superPart}${brandPart}${pesachPart}
 Devuelve SOLO este JSON:
 {"suggestions":[{"id":1,"name":"...","type":"...","description":"..."},{"id":2,"name":"...","type":"...","description":"..."},{"id":3,"name":"...","type":"...","description":"..."}]}`;
 }
