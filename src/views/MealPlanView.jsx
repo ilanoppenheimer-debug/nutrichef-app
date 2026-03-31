@@ -200,6 +200,7 @@ Perfil: ${profileStr}${favStr ? `. Inspiracion: ${favStr}` : ''}.${planPreferenc
 ${guardrailStr}
 ${budgetStr}
 ${isWeekly ? 'No repetir el mismo menu exacto los 7 dias.' : 'Ofrece 2 opciones por tipo de comida.'}
+Las descripciones de opciones de comida deben ser cortas (8-12 palabras), directas y sin frases vacías.
 Devuelve SOLO este JSON:
 {"summary":"...","totalCalories":"...","totalProtein":"...","totalFiber":"...","days":[{"dayName":"${targetDayName}","meals":[{"type":"Desayuno","options":[{"name":"...","description":"...","calories":"...","protein":"...","fiber":"...","servings":1}]}]}]}`;
 
@@ -311,7 +312,7 @@ ${RECIPE_JSON_SCHEMA}`;
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <MealPlanHeader
         profileGoals={profile.goals}
         plan={plan}

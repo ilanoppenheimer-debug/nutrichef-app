@@ -77,10 +77,13 @@ function MacroBar({ label, value, color, max }) {
 
 function IngredientRow({ ing }) {
   const [checked, setChecked] = useState(false);
-  const hasAlert = ing.isDislike || ing.allergyAlert;
-  const statusLabel = ing.allergyAlert
-    ? `Contiene ${ing.matchedAllergy || 'un alérgeno'}`
-    : ing.isDislike
+  const isDanger = ing.allergyAlert;
+  const isDislike = ing.isDislike && !ing.allergyAlert;
+  const hasAlert = isDanger || isDislike;
+
+  const statusLabel = isDanger
+    ? `⚠️ PELIGRO: ${ing.matchedAllergy || 'alérgeno detectado'}`
+    : isDislike
       ? 'No te gusta'
       : '';
 
@@ -88,8 +91,10 @@ function IngredientRow({ ing }) {
     <li
       onClick={() => setChecked(current => !current)}
       className={`flex cursor-pointer select-none items-start gap-3 rounded-2xl border p-3.5 transition-all ${
-        hasAlert
-          ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+        isDanger
+          ? 'border-red-300 bg-red-100 dark:border-red-700 dark:bg-red-900/30'
+          : isDislike
+          ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/10'
           : checked
           ? 'border-green-200 bg-green-50 opacity-70 dark:border-green-800 dark:bg-green-900/20'
           : 'border-slate-200 bg-slate-50 hover:border-[--c-primary-border] dark:border-gray-700 dark:bg-gray-800'
@@ -104,11 +109,20 @@ function IngredientRow({ ing }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className={`text-base font-semibold leading-snug ${checked ? 'line-through text-slate-400' : hasAlert ? 'text-red-700 dark:text-red-300' : 'text-slate-800 dark:text-white'}`}>
-            {ing.name}
+            <p className={`text-base font-semibold leading-snug ${
+              checked ? 'line-through text-slate-400'
+              : isDanger ? 'line-through text-red-700 dark:text-red-300'
+              : isDislike ? 'text-orange-700 dark:text-orange-300'
+              : 'text-slate-800 dark:text-white'
+            }`}>
+              {ing.name}
             </p>
             {statusLabel && (
-              <span className="mt-1 inline-flex rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black text-red-700 dark:bg-black/10 dark:text-red-300">
+              <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${
+                isDanger
+                  ? 'bg-red-200 text-red-800 dark:bg-red-900/50 dark:text-red-200'
+                  : 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300'
+              }`}>
                 {statusLabel}
               </span>
             )}
@@ -122,12 +136,12 @@ function IngredientRow({ ing }) {
 
         {ing.substitute && (
           <div className={`mt-2 inline-flex items-start gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-            hasAlert
+            isDanger
               ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
               : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
           }`}>
             <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-            <span>{hasAlert ? 'Sustituto sugerido:' : 'Sub:'} {ing.substitute}</span>
+            <span>{isDanger ? 'Sustituto sugerido:' : 'Sustituir por:'} {ing.substitute}</span>
           </div>
         )}
       </div>
@@ -336,6 +350,16 @@ function AdjustPanel({ recipe, onRefined, onClose }) {
   );
 }
 
+function parseTotalWeightGrams(ingredients = []) {
+  let total = 0;
+  for (const ing of ingredients) {
+    const amount = String(ing.amount || '');
+    const match = amount.match(/(\d+(?:\.\d+)?)\s*(?:g|ml|gr|grs)\b/i);
+    if (match) total += parseFloat(match[1]);
+  }
+  return total;
+}
+
 export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const {
     profile,
@@ -359,7 +383,8 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const [refinedBadge, setRefinedBadge] = useState(false);
   const [selectedServings, setSelectedServings] = useState(parseServingsCount(initialRecipe?.servings || 1));
   const [shareFeedback, setShareFeedback] = useState('');
-  const [openSections, setOpenSections] = useState({ ingredients: true, brands: false, steps: false });
+  const [openSections, setOpenSections] = useState({ ingredients: true, brands: false, steps: false, tips: false });
+  const [showPer100g, setShowPer100g] = useState(false);
 
   useEffect(() => {
     setSelectedServings(parseServingsCount(recipe?.servings || 1));
@@ -395,6 +420,21 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const calories = parseFloat(String(displayRecipe.macros?.calories || '0').replace(/[^\d.]/g, '')) || 0;
   const adjustedIngredientsCount = ingredientInsights.ingredients.filter(item => item.isDislike && item.substitute).length;
 
+  const totalWeightG = parseTotalWeightGrams(displayRecipe.ingredients);
+  const canShowPer100g = totalWeightG >= 50;
+  const scaleValuePer100g = (valueStr) => {
+    if (!totalWeightG) return '—';
+    const raw = parseFloat(String(valueStr || '0').replace(/[^\d.]/g, '')) || 0;
+    return `${((raw / totalWeightG) * 100).toFixed(1)}`;
+  };
+  const displayMacros = showPer100g && canShowPer100g ? {
+    calories: `${scaleValuePer100g(displayRecipe.macros?.calories)} kcal`,
+    protein: `${scaleValuePer100g(displayRecipe.macros?.protein)}g`,
+    carbs: `${scaleValuePer100g(displayRecipe.macros?.carbs)}g`,
+    fat: `${scaleValuePer100g(displayRecipe.macros?.fat)}g`,
+    fiber: `${scaleValuePer100g(displayRecipe.macros?.fiber)}g`,
+  } : displayRecipe.macros;
+
   const toggleSection = (section) => {
     setOpenSections(current => ({ ...current, [section]: !current[section] }));
   };
@@ -429,7 +469,7 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
     setRecipe(refinedRecipe);
     setShowAdjust(false);
     setRefinedBadge(true);
-    setOpenSections({ ingredients: true, brands: false, steps: false });
+    setOpenSections({ ingredients: true, brands: false, steps: false, tips: false });
     setTimeout(() => setRefinedBadge(false), 3000);
     if (onRecipeChange) onRecipeChange(refinedRecipe);
   };
@@ -595,14 +635,46 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
 
           <div className="space-y-4">
             {recipe.macros && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                <h4 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Información Nutricional</h4>
-                <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-                  <MacroBar label="Proteína" value={displayRecipe.macros.protein} color="bg-blue-500" max={60} />
-                  <MacroBar label="Carbohidratos" value={displayRecipe.macros.carbs} color="bg-amber-400" max={120} />
-                  <MacroBar label="Grasa" value={displayRecipe.macros.fat} color="bg-rose-400" max={50} />
-                  <MacroBar label="Fibra" value={displayRecipe.macros.fiber} color="bg-green-500" max={30} />
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="mb-3 flex items-center gap-2">
+                  <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    Nutrición {showPer100g ? '/ 100g' : '/ porción'}
+                  </h4>
+                  {canShowPer100g && (
+                    <>
+                      <span className="text-[10px] font-semibold text-slate-400">{showPer100g ? '100g' : 'Total'}</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPer100g(v => !v)}
+                        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${showPer100g ? '' : 'bg-slate-200 dark:bg-gray-700'}`}
+                        style={showPer100g ? { background: 'var(--c-primary)' } : {}}
+                        aria-label="Alternar modo por 100g"
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${showPer100g ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </>
+                  )}
                 </div>
+                <div className="flex items-center divide-x divide-slate-100 overflow-x-auto no-scrollbar dark:divide-gray-700">
+                  {[
+                    { label: 'Cal', value: displayMacros?.calories, color: 'text-orange-600 dark:text-orange-400' },
+                    { label: 'Prot', value: displayMacros?.protein, color: 'text-blue-600 dark:text-blue-400' },
+                    { label: 'Carb', value: displayMacros?.carbs, color: 'text-amber-600 dark:text-amber-400' },
+                    { label: 'Gra', value: displayMacros?.fat, color: 'text-rose-600 dark:text-rose-400' },
+                    { label: 'Fib', value: displayMacros?.fiber, color: 'text-green-600 dark:text-green-400' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="flex-1 shrink-0 px-3 py-1 text-center">
+                      <p className={`text-sm font-black ${color}`}>{value || '—'}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                {recipe.seguridad && (
+                  <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+                    <ShieldCheck size={13} className="shrink-0" />
+                    {recipe.seguridad}
+                  </div>
+                )}
               </section>
             )}
 
@@ -628,10 +700,9 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
             </SectionCard>
 
             {recipe.tips && typeof recipe.tips === 'string' && (
-              <div className="flex gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-                <Info size={15} className="mt-0.5 shrink-0 text-blue-500" />
-                <p className="text-base leading-relaxed text-blue-900 dark:text-blue-200"><span className="font-bold">Tip: </span>{recipe.tips}</p>
-              </div>
+              <SectionCard title="Notas del Chef" subtitle="Consejos extra para el mejor resultado." icon={Info} isOpen={openSections.tips} onToggle={() => toggleSection('tips')}>
+                <p className="text-sm leading-relaxed text-blue-900 dark:text-blue-200"><span className="font-bold">Tip: </span>{recipe.tips}</p>
+              </SectionCard>
             )}
 
             {recipe._refinements?.length > 0 && (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, Dumbbell, HeartPulse, Moon, PiggyBank, RefreshCw, ShoppingBag, Star, Target, Trophy } from 'lucide-react';
+import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, ChevronDown, ChevronUp, Dumbbell, HeartPulse, Lock, Moon, PiggyBank, RefreshCw, ShoppingBag, Star, Target, Trophy } from 'lucide-react';
 import { useAppState } from '../context/appState.js';
 import { calculateTDEE, getSupermarketsForCountry } from '../lib/gemini.js';
 import { mergeUniqueTerms } from '../lib/ingredientIntelligence.js';
@@ -38,6 +38,8 @@ export default function ProfileView() {
   const { profile, setProfile } = useAppState();
   const [dislikeInput, setDislikeInput] = useState('');
   const [otherAllergyInput, setOtherAllergyInput] = useState('');
+  const [openSections, setOpenSections] = useState({ biometry: true, diet: true, shopping: false });
+  const toggleProfileSection = (key) => setOpenSections(c => ({ ...c, [key]: !c[key] }));
 
   // Recalcular macros automáticamente cuando cambien los datos relevantes
   useEffect(() => {
@@ -72,7 +74,14 @@ export default function ProfileView() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6">
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+
+      {/* Banner médico */}
+      <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
+        <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+          <span className="font-black">⚠️ Advertencia:</span> NutriChef IA es un asistente inteligente, pero puede cometer errores. Revisa siempre los ingredientes y sellos de certificación antes de consumir, especialmente si tienes alergias severas o restricciones religiosas estrictas.
+        </p>
+      </div>
 
       {/* Meta principal */}
       <section className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-md">
@@ -103,9 +112,17 @@ export default function ProfileView() {
 
       {/* Biometría */}
       <section className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-md">
-        <h3 className="text-base font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-          <Activity size={16} className="text-blue-500" /> Biometría y Macros
-        </h3>
+        <button
+          type="button"
+          onClick={() => toggleProfileSection('biometry')}
+          className="flex w-full items-center justify-between"
+        >
+          <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+            <Activity size={16} className="text-blue-500" /> Biometría y Macros
+          </h3>
+          {openSections.biometry ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        </button>
+        {openSections.biometry && <div className="mt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {[
             { label: 'Edad', field: 'age', placeholder: '30' },
@@ -163,6 +180,7 @@ export default function ProfileView() {
             </div>
           ))}
         </div>
+        </div>}
       </section>
 
       {/* Deporte */}
@@ -198,11 +216,19 @@ export default function ProfileView() {
       </section>
 
       {/* Dieta */}
-      <section className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-md space-y-5">
-        <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
-          <Apple size={16} className="text-green-500" /> Dieta y Restricciones
-        </h3>
+      <section className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-md">
+        <button
+          type="button"
+          onClick={() => toggleProfileSection('diet')}
+          className="flex w-full items-center justify-between"
+        >
+          <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+            <Apple size={16} className="text-green-500" /> Dieta y Restricciones
+          </h3>
+          {openSections.diet ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        </button>
 
+        {openSections.diet && <div className="mt-4 space-y-5">
         <div className="grid md:grid-cols-2 gap-5">
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1"><Apple size={12} className="text-green-500" /> Estilo de Dieta</label>
@@ -214,17 +240,15 @@ export default function ProfileView() {
                   <button
                     key={d}
                     onClick={() => setProfile({ ...profile, dietaryStyle: d })}
-                    className={`min-h-[72px] rounded-2xl border-2 px-3 py-3 text-left text-sm font-semibold transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all ${
                       selected
                         ? meta.active
                         : 'border-slate-200 bg-white text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-300'
                     }`}
                   >
-                    <span className="mb-2 flex items-center justify-between">
-                      <span className="text-base">{meta.icon}</span>
-                      {selected && <CheckCircle2 size={14} className="shrink-0" />}
-                    </span>
-                    <span className="block leading-tight">{d}</span>
+                    <span className="text-sm">{meta.icon}</span>
+                    <span className="flex-1 leading-tight">{d}</span>
+                    {selected && <CheckCircle2 size={12} className="shrink-0" />}
                   </button>
                 );
               })}
@@ -240,22 +264,16 @@ export default function ProfileView() {
                   <button
                     key={d}
                     onClick={() => setProfile({ ...profile, religiousDiet: d })}
-                    className={`min-h-[72px] rounded-2xl border-2 px-3 py-3 text-left text-sm font-semibold transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all ${
                       selected
                         ? meta.active
                         : 'border-slate-200 bg-white text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-300'
                     }`}
                   >
-                    <span className="mb-2 flex items-center justify-between">
-                      <span className="text-base">{meta.icon}</span>
-                      {selected && <CheckCircle2 size={14} className="shrink-0" />}
-                    </span>
-                    <span className="block leading-tight">{d}</span>
-                    {selected && d === 'Kosher' && (
-                      <span className="mt-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-black text-amber-800 dark:bg-black/10 dark:text-amber-200">
-                        Prioridad Absoluta
-                      </span>
-                    )}
+                    <span className="text-sm">{meta.icon}</span>
+                    <span className="flex-1 leading-tight">{d}</span>
+                    {selected && d !== 'Ninguna' && <Lock size={11} className="shrink-0" />}
+                    {selected && d === 'Ninguna' && <CheckCircle2 size={12} className="shrink-0" />}
                   </button>
                 );
               })}
@@ -347,28 +365,24 @@ export default function ProfileView() {
         <div>
           <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1"><AlertTriangle size={12} className="text-red-500" /> Alergias e Intolerancias</label>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {COMMON_ALLERGIES.map(a => (
-              <button
-                key={a}
-                onClick={() => toggleAllergy(a)}
-                className={`min-h-[72px] rounded-2xl border-2 px-3 py-3 text-left text-sm font-semibold transition-all ${
-                  profile.allergies.includes(a)
-                    ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300'
-                    : 'border-slate-200 bg-white text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-300'
-                }`}
-              >
-                <span className="mb-2 flex items-center justify-between">
-                  <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-black text-red-700 dark:bg-black/10 dark:text-red-300">{ALLERGY_META[a]?.icon || 'AL'}</span>
-                  {profile.allergies.includes(a) && <CheckCircle2 size={14} className="shrink-0" />}
-                </span>
-                <span className="block leading-tight">{a}</span>
-                {profile.allergies.includes(a) && (
-                  <span className="mt-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-black text-red-700 dark:bg-black/10 dark:text-red-300">
-                    Bloqueo Activo
-                  </span>
-                )}
-              </button>
-            ))}
+            {COMMON_ALLERGIES.map(a => {
+              const isActive = profile.allergies.includes(a);
+              return (
+                <button
+                  key={a}
+                  onClick={() => toggleAllergy(a)}
+                  className={`flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300'
+                      : 'border-slate-200 bg-white text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-300'
+                  }`}
+                >
+                  <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-black text-red-700 dark:bg-black/10 dark:text-red-300 shrink-0">{ALLERGY_META[a]?.icon || 'AL'}</span>
+                  <span className="flex-1 leading-tight">{a}</span>
+                  {isActive && <Lock size={11} className="shrink-0" />}
+                </button>
+              );
+            })}
           </div>
           <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-900/20">
             <label className="mb-2 block text-xs font-bold text-red-800 dark:text-red-300">Otras alergias o intolerancias</label>
@@ -420,13 +434,22 @@ export default function ProfileView() {
             </div>
           </div>
         )}
+        </div>}
       </section>
 
       {/* ── Supermercados preferidos (multi-select) ─────────────────── */}
       <section className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-md">
-        <h3 className="text-base font-black text-slate-800 dark:text-white mb-1 flex items-center gap-2">
-          <ShoppingBag size={16} className="text-emerald-500" /> Supermercados preferidos
-        </h3>
+        <button
+          type="button"
+          onClick={() => toggleProfileSection('shopping')}
+          className="flex w-full items-center justify-between"
+        >
+          <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+            <ShoppingBag size={16} className="text-emerald-500" /> Supermercados preferidos
+          </h3>
+          {openSections.shopping ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        </button>
+        {openSections.shopping && <div className="mt-3">
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
           La IA priorizará marcas disponibles en los que selecciones. Selección múltiple.
         </p>
@@ -445,15 +468,15 @@ export default function ProfileView() {
                       : [...current, s],
                   });
                 }}
-                className={`flex min-h-[72px] items-start gap-2 rounded-2xl border-2 px-3 py-3 text-left text-sm font-semibold transition-all ${
+                className={`flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all ${
                   selected
                     ? 'border-[--c-primary] bg-[--c-primary-light] text-[--c-primary-text] shadow-sm'
                     : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 bg-white dark:bg-gray-800 hover:border-[--c-primary-border]'
                 }`}
               >
-                <ShoppingBag size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+                <ShoppingBag size={13} className="shrink-0 text-emerald-500" />
                 <span className="flex-1 leading-tight">{s}</span>
-                {selected && <CheckCircle2 size={14} className="shrink-0" style={{ color: 'var(--c-primary)' }} />}
+                {selected && <CheckCircle2 size={12} className="shrink-0" style={{ color: 'var(--c-primary)' }} />}
               </button>
             );
           })}
@@ -463,6 +486,7 @@ export default function ProfileView() {
             ✓ Activos: <strong>{profile.preferredSupermarkets.join(', ')}</strong>
           </div>
         )}
+        </div>}
       </section>
     </div>
   );

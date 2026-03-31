@@ -1,22 +1,22 @@
+import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { ChefHat } from 'lucide-react';
-import AppLayout from './components/layout/AppLayout.jsx';
 import { AppStateProvider, isProfileComplete } from './context/AppStateContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { ROUTES } from './routes/paths.js';
 import { useAppState } from './context/appState.js';
-import { useEffect } from 'react';
 
-import GeneratorView from './views/GeneratorView.jsx';
-import ExploreView from './views/ExploreView.jsx';
-import MealPlanView from './views/MealPlanView.jsx';
-import ProfileView from './views/ProfileView.jsx';
-import SettingsView from './views/SettingsView.jsx';
-import SavedView from './views/SavedView.jsx';
-import AddRecipeView from './views/AddRecipeView.jsx';
-import LoginView from './views/LoginView.jsx';
-import OnboardingView from './views/OnboardingView.jsx';
+const AppLayout = lazy(() => import('./components/layout/AppLayout.jsx'));
+const GeneratorView = lazy(() => import('./views/GeneratorView.jsx'));
+const ExploreView = lazy(() => import('./views/ExploreView.jsx'));
+const MealPlanView = lazy(() => import('./views/MealPlanView.jsx'));
+const ProfileView = lazy(() => import('./views/ProfileView.jsx'));
+const SettingsView = lazy(() => import('./views/SettingsView.jsx'));
+const SavedView = lazy(() => import('./views/SavedView.jsx'));
+const AddRecipeView = lazy(() => import('./views/AddRecipeView.jsx'));
+const LoginView = lazy(() => import('./views/LoginView.jsx'));
+const OnboardingView = lazy(() => import('./views/OnboardingView.jsx'));
 
 function SplashScreen() {
   return (
@@ -31,7 +31,19 @@ function SplashScreen() {
   );
 }
 
-// Redirige al onboarding si el perfil está incompleto
+function RouteLoadingScreen() {
+  return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center bg-transparent">
+      <div className="flex flex-col items-center gap-4 animate-pulse">
+        <div className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg" style={{ background: 'var(--c-primary)' }}>
+          <ChefHat size={34} className="text-white" />
+        </div>
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Cargando vista...</p>
+      </div>
+    </div>
+  );
+}
+
 function OnboardingGuard({ children }) {
   const { profile, firestoreReady } = useAppState();
   const navigate = useNavigate();
@@ -49,30 +61,41 @@ function AppRoutes() {
   const { user, isLocalMode } = useAuth();
 
   if (user === undefined && !isLocalMode) return <SplashScreen />;
-  if (user === null && !isLocalMode) return <LoginView />;
+
+  if (user === null && !isLocalMode) {
+    return (
+      <Suspense fallback={<SplashScreen />}>
+        <LoginView />
+      </Suspense>
+    );
+  }
 
   return (
     <AppStateProvider>
-      <Routes>
-        {/* Onboarding fuera del layout principal */}
-        <Route path={ROUTES.onboarding} element={<OnboardingView />} />
+      <Suspense fallback={<RouteLoadingScreen />}>
+        <Routes>
+          <Route path={ROUTES.onboarding} element={<OnboardingView />} />
 
-        <Route path={ROUTES.home} element={
-          <OnboardingGuard>
-            <AppLayout />
-          </OnboardingGuard>
-        }>
-          <Route index element={<Navigate to={ROUTES.create} replace />} />
-          <Route path={ROUTES.create.slice(1)} element={<GeneratorView />} />
-          <Route path={ROUTES.explore.slice(1)} element={<ExploreView />} />
-          <Route path={ROUTES.saved.slice(1)} element={<SavedView />} />
-          <Route path={ROUTES.plan.slice(1)} element={<MealPlanView />} />
-          <Route path={ROUTES.profile.slice(1)} element={<ProfileView />} />
-          <Route path={ROUTES.settings.slice(1)} element={<SettingsView />} />
-          <Route path="add-recipe" element={<AddRecipeView />} />
-          <Route path="*" element={<Navigate to={ROUTES.create} replace />} />
-        </Route>
-      </Routes>
+          <Route
+            path={ROUTES.home}
+            element={
+              <OnboardingGuard>
+                <AppLayout />
+              </OnboardingGuard>
+            }
+          >
+            <Route index element={<Navigate to={ROUTES.create} replace />} />
+            <Route path={ROUTES.create.slice(1)} element={<GeneratorView />} />
+            <Route path={ROUTES.explore.slice(1)} element={<ExploreView />} />
+            <Route path={ROUTES.saved.slice(1)} element={<SavedView />} />
+            <Route path={ROUTES.plan.slice(1)} element={<MealPlanView />} />
+            <Route path={ROUTES.profile.slice(1)} element={<ProfileView />} />
+            <Route path={ROUTES.settings.slice(1)} element={<SettingsView />} />
+            <Route path="add-recipe" element={<AddRecipeView />} />
+            <Route path="*" element={<Navigate to={ROUTES.create} replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </AppStateProvider>
   );
 }

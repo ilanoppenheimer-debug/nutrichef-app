@@ -97,7 +97,7 @@ export function compactProfile(profile) {
   if (profile.preferredSupermarkets?.length) parts.push(`Supers:${profile.preferredSupermarkets.join(',')}`);
   else if (profile.preferredSupermarket) parts.push(`Super:${profile.preferredSupermarket}`);
   // Localización
-  if (profile.country && profile.country !== 'Chile') parts.push(`Pais:${profile.country}`);
+  if (profile.country) parts.push(`Pais:${profile.country}`);
   if (profile.language && profile.language !== 'es') parts.push(`Idioma:${profile.language}`);
   // Pésaj
   if (profile.pesachMode) parts.push(`Pesaj:Si|Kitniot:${profile.allowsKitniot ? 'Si' : 'No'}`);
@@ -281,7 +281,7 @@ Devuelve precios mínimos y máximos NUMÉRICOS por ingrediente, más total sema
 }
 
 // ── Schema JSON de receta (con seguridad de ingredientes) ─────────────────────
-export const RECIPE_JSON_SCHEMA = `{"title":"...","description":"...","prepTime":"...","cookTime":"...","cuisine":"...","servings":"...","ingredients":[{"name":"...","amount":"...","substitute":"...","suggestedSubstitute":"...","isDislike":false,"allergyAlert":false}],"steps":["..."],"macros":{"calories":"...","protein":"...","carbs":"...","fat":"...","fiber":"..."},"tips":"...","marcas_sugeridas":[{"name":"...","category":"kosher|halal|vegan|powerlifting|vegetariana","note":"..."}]}`;
+export const RECIPE_JSON_SCHEMA = `{"title":"...","description":"...","prepTime":"...","cookTime":"...","cuisine":"...","servings":"...","ingredients":[{"name":"...","amount":"...","substitute":"...","suggestedSubstitute":"...","isDislike":false,"allergyAlert":false}],"steps":["..."],"macros":{"calories":"...","protein":"...","carbs":"...","fat":"...","fiber":"..."},"tips":"...","marcas_sugeridas":[{"name":"...","category":"kosher|halal|vegan|powerlifting|vegetariana","note":"..."}],"seguridad":"Apto [Dieta] - [motivo corto en 5 palabras max]"}`;
 
 // ── Builder de prompt de receta con marcas ───────────────────────────────────
 export function buildRecipePrompt({ name, description, ingredients, profileStr, profile }) {
@@ -292,7 +292,9 @@ export function buildRecipePrompt({ name, description, ingredients, profileStr, 
 Perfil: ${profileStr}.
 ${guardrail}${brandCtx}
 Marca cada ingrediente conflictivo con "isDislike" o "allergyAlert" y añade "suggestedSubstitute" inmediato si aplica.
+Los pasos deben ser concisos (máximo 12 palabras por paso).
 ${needsBrands ? 'Incluye marcas relevantes en "marcas_sugeridas" según la dieta del usuario.' : 'Devuelve "marcas_sugeridas" como array vacío.'}
+En "seguridad" escribe una frase corta del tipo: "Apto Vegano", "Kosher verificado - Sin lácteos", "Sin gluten - Sustituciones aplicadas". Máximo 5 palabras tras el guión.
 Devuelve SOLO este JSON:
 ${RECIPE_JSON_SCHEMA}`;
 }

@@ -83,6 +83,11 @@ export default function OnboardingView() {
     if (currentStep.id === 'welcome') {
       return (
         <div className="space-y-5 text-center">
+          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-3 text-left dark:border-yellow-800 dark:bg-yellow-900/20">
+            <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+              <span className="font-black">⚠️ Advertencia:</span> NutriChef IA puede cometer errores. Revisa siempre los ingredientes y sellos de certificación antes de consumir, especialmente si tienes alergias severas o restricciones religiosas estrictas.
+            </p>
+          </div>
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl text-white shadow-lg" style={{ background: 'var(--c-primary)' }}>
             <ChefHat size={32} />
           </div>

@@ -135,7 +135,8 @@ CONSIDERA ESTO UNA ORDEN: Bajo ninguna circunstancia sugieras ingredientes prese
 Si la receta tradicionalmente lleva ese ingrediente, SUSTITUYELO automaticamente por una alternativa segura y coherente.
 NO sugieras marcas que no tengan certificación Kosher si el modo está activo, ni ingredientes con alérgenos declarados, incluso si son económicos.
 Restricciones activas: ${rules.join(' | ')}.
-ORDEN DE PRIORIDAD EN CONFLICTOS: Prioridad 1: Alergias. Prioridad 2: Dieta Religiosa (Kosher/Pésaj). Prioridad 3: Estilo de vida (Vegano/Vegetariano). Si hay conflicto entre restricciones, la restricción de salud/religión siempre domina sobre la de estilo de vida.`;
+ORDEN DE PRIORIDAD EN CONFLICTOS: Prioridad 1: Alergias. Prioridad 2: Dieta Religiosa (Kosher/Pésaj). Prioridad 3: Estilo de vida (Vegano/Vegetariano). Si hay conflicto entre restricciones, la restricción de salud/religión siempre domina sobre la de estilo de vida.${profile.pesachMode ? `
+MODO PÉSAJ ACTIVO: PROHIBIDO sugerir cualquier ingrediente Jametz (trigo, cebada, centeno, avena, espelta, levadura, polvo de hornear, bicarbonato). ${profile.allowsKitniot === false ? 'SIN KITNIOT: también prohibidos arroz, legumbres, maíz, soja y sus derivados.' : 'Kitniot permitido (tradición sefardí): arroz y legumbres son aceptables.'} Si la receta original requiere estos ingredientes, DEBES reemplazarlos obligatoriamente por alternativas aptas para Pésaj.` : ''}`;
 }
 
 export function isBrandCompatibleWithProfile(brand, profile) {

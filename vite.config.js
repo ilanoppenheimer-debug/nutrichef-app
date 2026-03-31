@@ -11,6 +11,20 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('firebase')) return 'firebase'
+          if (id.includes('react-router')) return 'router'
+          if (id.includes('lucide-react') || id.includes('react-icons')) return 'icons'
+          if (id.includes('react') || id.includes('scheduler')) return 'react-vendor'
+          return 'vendor'
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

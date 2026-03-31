@@ -63,7 +63,7 @@ export default function SavedView() {
 
   if (selectedRecipe) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <button
           onClick={() => setSelectedRecipe(null)}
           className="mb-4 font-medium flex items-center gap-1 hover:underline text-sm"
@@ -83,7 +83,7 @@ export default function SavedView() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <h1 className="text-2xl font-black text-slate-800 dark:text-white">Mis Recetas</h1>
 
       {/* Tabs */}

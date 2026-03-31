@@ -142,7 +142,7 @@ export default function TipsWidget() {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-100 dark:border-gray-800 overflow-x-auto">
+          <div className="flex border-b border-slate-100 dark:border-gray-800 overflow-x-auto no-scrollbar">
             {TABS.map(t => (
               <button
                 key={t.id}

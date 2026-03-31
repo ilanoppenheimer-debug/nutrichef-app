@@ -231,9 +231,17 @@ export default function SelectedDayMeals({
       {dayWarnings.length > 0 && (
         <div className="flex gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertTriangle size={18} className="mt-0.5 shrink-0" />
-          <p>
-            <span className="font-black">Nota:</span> Esta selección menciona {dayWarnings.map(item => item.term).join(', ')}. Revisa el sustituto sugerido antes de cocinar.
-          </p>
+          <div>
+            {dayWarnings.some(w => w.type === 'allergy') && (
+              <p><span className="font-black">⚠️ ALÉRGENO detectado:</span> {dayWarnings.filter(w => w.type === 'allergy').map(w => w.term).join(', ')}. Este ingrediente está bloqueado por tu perfil.</p>
+            )}
+            {dayWarnings.some(w => w.type === 'dislike') && (
+              <p className={dayWarnings.some(w => w.type === 'allergy') ? 'mt-1' : ''}><span className="font-semibold">Preferencia:</span> {dayWarnings.filter(w => w.type === 'dislike').map(w => w.term).join(', ')} — ver sustituto en el detalle.</p>
+            )}
+            {dayWarnings.every(w => !w.type) && (
+              <p><span className="font-black">Nota:</span> Esta selección menciona {dayWarnings.map(item => item.term).join(', ')}. Revisa el sustituto sugerido antes de cocinar.</p>
+            )}
+          </div>
         </div>
       )}
 

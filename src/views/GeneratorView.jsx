@@ -278,7 +278,7 @@ ${RECIPE_JSON_SCHEMA}`;
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
       <div className="lg:col-span-4 space-y-6">
         <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-gray-800">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">

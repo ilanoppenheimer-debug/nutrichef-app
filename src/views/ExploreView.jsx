@@ -120,7 +120,7 @@ ${RECIPE_JSON_SCHEMA}`;
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8">
+    <div className="w-full max-w-6xl mx-auto space-y-8">
 
       {/* Header con búsqueda unificada */}
       <div className="p-8 rounded-3xl shadow-md text-white text-center" style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>

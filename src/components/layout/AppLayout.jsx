@@ -88,7 +88,7 @@ export default function AppLayout() {
 
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-20 border-b border-slate-100 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 
           {/* Logo */}
           <NavLink to={ROUTES.create} className="flex items-center gap-2 shrink-0" style={{ color: 'var(--c-primary)' }}>
@@ -128,7 +128,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 sm:px-5 lg:px-4 py-6 md:py-8">
+      <main className="max-w-6xl mx-auto px-6 sm:px-5 lg:px-4 py-6 md:py-8">
         <Outlet />
       </main>
 
@@ -138,7 +138,7 @@ export default function AppLayout() {
       {location.pathname !== ROUTES.create && (
         <NavLink
           to={ROUTES.create}
-          className="sm:hidden fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-[0_18px_38px_rgba(15,23,42,0.18)] border border-white/30"
+          className="sm:hidden fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_18px_38px_rgba(15,23,42,0.18)] border border-white/30"
           style={{ background: 'linear-gradient(135deg, var(--c-primary), var(--c-accent))' }}
           aria-label="Generar receta"
         >
