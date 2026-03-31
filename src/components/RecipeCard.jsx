@@ -11,6 +11,7 @@ import {
   Info,
   MessageSquare,
   Minus,
+  MoreHorizontal,
   Plus,
   RefreshCw,
   Send,
@@ -229,10 +230,14 @@ function BrandSuggestions({ brands }) {
   );
 }
 
-function AdjustPanel({ recipe, onRefined, onClose }) {
+function AdjustPanel({ recipe, onRefined, onClose, initialInstruction = '' }) {
   const { addDislike, refineGeneratedRecipe } = useAppState();
-  const [instruction, setInstruction] = useState('');
+  const [instruction, setInstruction] = useState(initialInstruction);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialInstruction) setInstruction(initialInstruction);
+  }, [initialInstruction]);
   const [error, setError] = useState(null);
   const [detectedIngredient, setDetectedIngredient] = useState(null);
   const [rememberAsked, setRememberAsked] = useState(false);
@@ -385,6 +390,8 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const [shareFeedback, setShareFeedback] = useState('');
   const [openSections, setOpenSections] = useState({ ingredients: true, brands: false, steps: false, tips: false });
   const [showPer100g, setShowPer100g] = useState(false);
+  const [showSecondaryActions, setShowSecondaryActions] = useState(false);
+  const [heroPreset, setHeroPreset] = useState('');
 
   useEffect(() => {
     setSelectedServings(parseServingsCount(recipe?.servings || 1));
@@ -545,14 +552,21 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
           )}
 
           <div className="absolute right-4 top-4 flex gap-2">
-            <button onClick={toggleInterested} className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 text-white shadow-md backdrop-blur-sm transition-all ${isInterested ? 'bg-blue-500' : 'bg-slate-950/25'}`} aria-label="Guardar para revisar después">
-              <Bookmark size={18} fill={isInterested ? 'currentColor' : 'none'} />
-            </button>
+            {showSecondaryActions && (
+              <>
+                <button onClick={toggleInterested} className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 text-white shadow-md backdrop-blur-sm transition-all animate-in fade-in zoom-in-75 ${isInterested ? 'bg-blue-500' : 'bg-slate-950/25'}`} aria-label="Guardar para revisar después">
+                  <Bookmark size={18} fill={isInterested ? 'currentColor' : 'none'} />
+                </button>
+                <button onClick={handleShare} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-slate-950/25 text-white shadow-md backdrop-blur-sm transition-all animate-in fade-in zoom-in-75" aria-label="Compartir receta">
+                  <Share2 size={18} />
+                </button>
+              </>
+            )}
             <button onClick={toggleFavorite} className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 text-white shadow-md backdrop-blur-sm transition-all ${isFavorite ? 'bg-red-500' : 'bg-slate-950/25'}`} aria-label="Marcar como favorita">
               <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
-            <button onClick={handleShare} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-slate-950/25 text-white shadow-md backdrop-blur-sm transition-all" aria-label="Compartir receta">
-              <Share2 size={18} />
+            <button onClick={() => setShowSecondaryActions(v => !v)} className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 text-white shadow-md backdrop-blur-sm transition-all ${showSecondaryActions ? 'bg-white/20' : 'bg-slate-950/25'}`} aria-label="Más acciones">
+              <MoreHorizontal size={18} />
             </button>
           </div>
 
@@ -575,6 +589,19 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
               <button onClick={() => setShowAdjust(current => !current)} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${showAdjust ? 'bg-white text-slate-900' : 'bg-white/20 text-white'}`}>
                 <Settings2 size={13} /> Ajustar
               </button>
+            </div>
+
+            {/* Quick preset chips */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {['+ Proteína', '- Calorías', 'Sin gluten', 'Más rápida'].map(preset => (
+                <button
+                  key={preset}
+                  onClick={() => { setHeroPreset(preset); setShowAdjust(true); }}
+                  className="rounded-full bg-white/10 border border-white/20 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm hover:bg-white/25 transition-colors"
+                >
+                  {preset}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -616,7 +643,7 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
       </div>
 
       <div className="space-y-5 px-4 pb-6 pt-5 sm:px-6 md:px-8 md:pb-8">
-        {showAdjust && <AdjustPanel recipe={recipe} onRefined={handleRefined} onClose={() => setShowAdjust(false)} />}
+        {showAdjust && <AdjustPanel recipe={recipe} onRefined={handleRefined} onClose={() => { setShowAdjust(false); setHeroPreset(''); }} initialInstruction={heroPreset} />}
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[0.95fr_1.15fr] lg:items-start lg:gap-6">
           <div className="space-y-4">

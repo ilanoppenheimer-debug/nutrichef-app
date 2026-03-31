@@ -363,36 +363,6 @@ export default function SelectedDayMeals({
                       </div>
                     </div>
 
-                    {swappingData?.dayIdx === selectedDayIdx && swappingData?.mealIdx === mealIndex && (
-                      <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 animate-in slide-in-from-top-2">
-                        <label className="block text-sm font-bold text-orange-900">¿Qué cambio te gustaría hacer?</label>
-                        <div className="mt-2 flex gap-2">
-                          <input
-                            type="text"
-                            value={customSwapRequest}
-                            onChange={(e) => onSwapRequestChange(e.target.value)}
-                            placeholder="Ej: más liviano, sin huevo, listo en 15 min..."
-                            className="flex-1 rounded-xl border border-orange-300 bg-white p-3 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-orange-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={onSwapConfirm}
-                            disabled={isSwapping || !customSwapRequest.trim()}
-                            className="flex min-w-[92px] items-center justify-center rounded-xl bg-orange-600 px-4 text-sm font-bold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
-                          >
-                            {isSwapping ? <RefreshCw className="animate-spin" size={16} /> : 'Generar'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={onSwapCancel}
-                            className="rounded-xl border border-orange-200 bg-white p-3 text-slate-400 transition-colors hover:text-red-500"
-                            aria-label="Cancelar cambio"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
 
                     <button
                       type="button"
@@ -420,6 +390,49 @@ export default function SelectedDayMeals({
       <div className="lg:hidden">
         {(selectedRecipe || detailSelection) ? detailContent : null}
       </div>
+
+      {/* Bottom sheet for swap — appears over everything on mobile */}
+      {swappingData?.dayIdx === selectedDayIdx && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onSwapCancel} />
+          <div className="relative z-50 rounded-t-3xl bg-white dark:bg-gray-900 px-5 pt-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300 dark:bg-gray-600" />
+            <h4 className="text-base font-black text-slate-800 dark:text-white mb-1">¿Qué cambio te gustaría hacer?</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Comida actual: <span className="font-semibold">{swappingData.currentMealName}</span>
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customSwapRequest}
+                onChange={(e) => onSwapRequestChange(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !isSwapping && customSwapRequest.trim() && onSwapConfirm()}
+                placeholder="Ej: más liviano, sin huevo, listo en 15 min..."
+                autoFocus
+                className="flex-1 rounded-xl border border-slate-200 dark:border-gray-600 bg-slate-50 dark:bg-gray-800 p-3 text-sm outline-none focus:border-transparent focus:ring-2 dark:text-white"
+                style={{ '--tw-ring-color': 'var(--c-primary)' }}
+              />
+              <button
+                type="button"
+                onClick={onSwapConfirm}
+                disabled={isSwapping || !customSwapRequest.trim()}
+                className="flex min-w-[88px] items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-colors disabled:opacity-50"
+                style={{ background: 'var(--c-primary)' }}
+              >
+                {isSwapping ? <RefreshCw className="animate-spin" size={16} /> : 'Generar'}
+              </button>
+              <button
+                type="button"
+                onClick={onSwapCancel}
+                className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-slate-400 transition-colors hover:text-red-500"
+                aria-label="Cancelar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

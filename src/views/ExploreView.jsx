@@ -32,6 +32,7 @@ export default function ExploreView() {
   const [sourceLabel, setSourceLabel] = useState(''); // 'local' | 'ia-literal' | 'ia-creative'
   const [noLocalResults, setNoLocalResults] = useState(false);
   const [detectedMode, setDetectedMode] = useState('creative');
+  const [forcedMode, setForcedMode] = useState(null); // null | 'local' | 'literal' | 'creative'
 
   // Recetas destacadas filtradas por perfil
   const featuredRecipes = (typeof getFeaturedRecipes === 'function'
@@ -43,9 +44,15 @@ export default function ExploreView() {
     if (!query.trim()) return;
     setRecipe(null); setSuggestions(null); setSourceLabel(''); setNoLocalResults(false);
 
-    // Detectar intención antes de buscar
-    const intent = detectSearchIntent(query);
+    // Detectar intención (respeta modo forzado por el usuario)
+    const intent = forcedMode && forcedMode !== 'local' ? forcedMode : detectSearchIntent(query);
     setDetectedMode(intent);
+
+    // Si el usuario forzó IA directa, saltamos la búsqueda local
+    if (forcedMode === 'literal' || forcedMode === 'creative') {
+      setNoLocalResults(true);
+      return;
+    }
 
     // Buscar local con filtros de perfil (Kosher, dieta, etc.)
     const localFn = typeof searchLocalRecipes === 'function' ? searchLocalRecipes : () => [];
@@ -135,9 +142,27 @@ ${RECIPE_JSON_SCHEMA}`;
             🔍 Filtrando para <strong>{profile.religiousDiet}</strong> · {profile.country || 'Chile'}
           </p>
         )}
-        <p className="text-indigo-300 text-xs mb-4">
-          💡 Búsquedas específicas como <em>"falafel en airfryer"</em> activan <strong>Modo Literal</strong>
-        </p>
+        {/* Mode filter chips */}
+        <div className="flex justify-center gap-2 mb-4 flex-wrap">
+          {[
+            { mode: null, label: '🔮 Auto' },
+            { mode: 'local', label: '⚡ Local' },
+            { mode: 'literal', label: '🎯 Literal' },
+            { mode: 'creative', label: '✨ Creativo' },
+          ].map(({ mode, label }) => (
+            <button
+              key={label}
+              onClick={() => setForcedMode(mode)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                forcedMode === mode
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'bg-white/15 text-white/80 hover:bg-white/25'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="flex gap-2 bg-white/10 p-2 rounded-2xl backdrop-blur-md max-w-2xl mx-auto border border-white/20">
           <input
             type="text"

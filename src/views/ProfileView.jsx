@@ -224,6 +224,18 @@ export default function ProfileView() {
         >
           <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
             <Apple size={16} className="text-green-500" /> Dieta y Restricciones
+            {!openSections.diet && (() => {
+              const count = [
+                profile.dietaryStyle && profile.dietaryStyle !== 'Ninguna' ? 1 : 0,
+                profile.religiousDiet && profile.religiousDiet !== 'Ninguna' ? 1 : 0,
+                ...(profile.allergies?.map(() => 1) || []),
+              ].reduce((a, b) => a + b, 0);
+              return count > 0 ? (
+                <span className="ml-1 text-[10px] font-black bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full">
+                  {count} activa{count > 1 ? 's' : ''}
+                </span>
+              ) : null;
+            })()}
           </h3>
           {openSections.diet ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
         </button>

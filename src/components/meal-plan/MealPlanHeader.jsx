@@ -78,16 +78,16 @@ export default function MealPlanHeader({
                     onClick={() => onSelectDay(idx)}
                     title={day.dayName}
                     aria-label={`Seleccionar ${day.dayName}`}
-                    className={`h-10 w-10 rounded-full border text-sm font-black transition-all ${
+                    className={`h-10 w-10 rounded-full border text-[11px] font-black transition-all ${
                       isActive
                         ? 'border-transparent bg-[--c-primary] text-white shadow-md'
                         : 'border-slate-200 bg-white text-slate-600 hover:border-[--c-primary-border] hover:bg-[--c-primary-light]'
                     }`}
                   >
-                    {idx + 1}
+                    {getDayShortLabel(day.dayName, idx).slice(0, 2)}
                   </button>
-                  <p className={`mt-1.5 text-[11px] font-bold ${isActive ? 'text-slate-800' : 'text-slate-500'}`}>
-                    {getDayShortLabel(day.dayName, idx)}
+                  <p className={`mt-1.5 text-[10px] font-bold ${isActive ? 'text-slate-800' : 'text-slate-500'}`}>
+                    {idx + 1}
                   </p>
                 </div>
               );

@@ -24,6 +24,7 @@ function RecipeCard_Mini({ rec, onSelect }) {
       {rec.description && <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 line-clamp-2">{rec.description}</p>}
       <div className="flex gap-2 text-xs font-semibold text-slate-400">
         {rec.macros?.calories && <span className="bg-slate-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">🔥 {rec.macros.calories}</span>}
+        {rec.macros?.protein && <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-md">💪 {rec.macros.protein}</span>}
         {rec.prepTime && <span className="bg-slate-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">⏱ {rec.prepTime}</span>}
       </div>
       {rec.generatedAt && (

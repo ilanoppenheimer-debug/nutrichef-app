@@ -519,7 +519,7 @@ ${RECIPE_JSON_SCHEMA}`;
             <button onClick={() => setSelectedRecipe(null)} className="mb-4 font-medium flex items-center gap-1 hover:underline" style={{ color: 'var(--c-primary)' }}>
               <ChevronRight className="rotate-180" size={18} /> Volver a opciones
             </button>
-            <RecipeCard recipe={selectedRecipe} />
+            <RecipeCard recipe={selectedRecipe} onRecipeChange={setSelectedRecipe} />
           </div>
         )}
       </div>
