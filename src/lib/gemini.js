@@ -432,3 +432,118 @@ El usuario busca: "${query}". Genera 3 opciones adaptadas a su perfil: ${profile
 Devuelve SOLO este JSON:
 {"suggestions":[{"id":1,"name":"...","type":"...","description":"..."},{"id":2,"name":"...","type":"...","description":"..."},{"id":3,"name":"...","type":"...","description":"..."}]}`;
 }
+
+function normalizeRecipeField(nextValue, fallbackValue) {
+  if (nextValue === null || nextValue === undefined) return fallbackValue;
+  if (typeof nextValue === 'string' && !nextValue.trim()) return fallbackValue;
+  if (Array.isArray(nextValue) && nextValue.length === 0) return fallbackValue;
+  if (typeof nextValue === 'object' && !Array.isArray(nextValue) && Object.keys(nextValue).length === 0) return fallbackValue;
+  return nextValue;
+}
+
+function mergeRecipeWithFallback(recipe, refinedRecipe) {
+  return {
+    ...recipe,
+    ...refinedRecipe,
+    title: normalizeRecipeField(refinedRecipe?.title, recipe?.title || 'Receta ajustada'),
+    description: normalizeRecipeField(refinedRecipe?.description, recipe?.description || ''),
+    prepTime: normalizeRecipeField(refinedRecipe?.prepTime, recipe?.prepTime || ''),
+    cookTime: normalizeRecipeField(refinedRecipe?.cookTime, recipe?.cookTime || ''),
+    cuisine: normalizeRecipeField(refinedRecipe?.cuisine, recipe?.cuisine || ''),
+    servings: normalizeRecipeField(refinedRecipe?.servings, recipe?.servings || ''),
+    ingredients: normalizeRecipeField(refinedRecipe?.ingredients, recipe?.ingredients || []),
+    steps: normalizeRecipeField(refinedRecipe?.steps, recipe?.steps || []),
+    tips: normalizeRecipeField(refinedRecipe?.tips, recipe?.tips || ''),
+    marcas_sugeridas: normalizeRecipeField(refinedRecipe?.marcas_sugeridas, recipe?.marcas_sugeridas || []),
+    macros: {
+      ...(recipe?.macros || {}),
+      ...(refinedRecipe?.macros || {}),
+      calories: normalizeRecipeField(refinedRecipe?.macros?.calories, recipe?.macros?.calories || ''),
+      protein: normalizeRecipeField(refinedRecipe?.macros?.protein, recipe?.macros?.protein || ''),
+      carbs: normalizeRecipeField(refinedRecipe?.macros?.carbs, recipe?.macros?.carbs || ''),
+      fat: normalizeRecipeField(refinedRecipe?.macros?.fat, recipe?.macros?.fat || ''),
+      fiber: normalizeRecipeField(refinedRecipe?.macros?.fiber, recipe?.macros?.fiber || ''),
+    },
+  };
+}
+
+export function extractDislikedIngredient(instruction = '') {
+  const text = instruction.toLowerCase().trim();
+  if (!text) return null;
+
+  const patterns = [
+    /(?:sin|quita(?:r)?|saca(?:r)?|elimina(?:r)?|omitir|sin usar)\s+(?:la|el|las|los)?\s*([^,.;\n]+)/i,
+    /(?:no me gusta|no quiero|evita(?:r)?)\s+(?:la|el|las|los)?\s*([^,.;\n]+)/i,
+    /(?:cambia|reemplaza|sustituye)\s+(?:la|el|las|los)?\s*([^,.;\n]+?)\s+(?:por|con)\s+/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const ingredient = match?.[1]?.trim();
+    if (ingredient) {
+      return ingredient
+        .replace(/^(de|del)\s+/i, '')
+        .replace(/\s+(por favor|pls|please)$/i, '')
+        .trim();
+    }
+  }
+
+  return null;
+}
+
+export async function refineRecipe(recipe, instruction) {
+  if (!recipe) throw new Error('No hay receta para ajustar.');
+  if (!instruction?.trim()) throw new Error('Ingresa un ajuste para la receta.');
+
+  const refinementSchema = `{
+  "title": "Nombre del plato",
+  "description": "Descripción breve apetitosa",
+  "prepTime": "XX min",
+  "cookTime": "XX min",
+  "cuisine": "Tipo de cocina",
+  "servings": "X porciones",
+  "ingredients": [{ "name": "ingrediente", "amount": "cantidad", "substitute": "sustituto opcional" }],
+  "steps": ["Paso 1...", "Paso 2..."],
+  "macros": { "calories": "aprox kcal", "protein": "Xg", "carbs": "Xg", "fat": "Xg", "fiber": "Xg" },
+  "tips": "Consejo de cocina",
+  "marcas_sugeridas": [{ "name": "marca", "category": "kosher|halal|vegan|powerlifting|vegetariana", "note": "motivo breve" }]
+}`;
+
+  const promptText = `Ajusta la siguiente receta según la instrucción del usuario.
+Mantén el mismo idioma de la receta original.
+Si el usuario pide quitar o reemplazar ingredientes, actualiza ingredientes, pasos, tiempos y macros para que sean coherentes.
+Devuelve SOLO un JSON válido con este esquema:
+${refinementSchema}
+
+RECETA ACTUAL:
+${JSON.stringify(recipe, null, 2)}
+
+INSTRUCCIÓN DEL USUARIO:
+${instruction}`;
+
+  const payload = {
+    contents: [{ role: 'user', parts: [{ text: promptText }] }],
+    generationConfig: { temperature: 0.25, responseMimeType: 'application/json' }
+  };
+
+  const data = await fetchGeminiContent({ kind: 'text', payload });
+  const textResult = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textResult) throw new Error('La IA no devolvio una receta ajustada.');
+
+  let parsed;
+  try {
+    parsed = JSON.parse(extractJSON(textResult));
+  } catch {
+    console.error('Respuesta cruda al refinar receta:', textResult);
+    throw new Error('La IA devolvio un ajuste invalido. Intenta de nuevo.');
+  }
+
+  const mergedRecipe = mergeRecipeWithFallback(recipe, parsed);
+  const refinements = Array.isArray(recipe?._refinements) ? recipe._refinements : [];
+
+  return {
+    ...mergedRecipe,
+    _refinedFrom: recipe?._refinedFrom || recipe?.title || mergedRecipe.title,
+    _refinements: [...refinements, { instruction: instruction.trim(), at: new Date().toISOString() }]
+  };
+}
