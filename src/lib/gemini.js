@@ -119,20 +119,144 @@ export function setRecipeCache(c) { setCache(GENERATOR_RECIPE_CACHE_KEY, c); }
 
 // ── Cache Keys ────────────────────────────────────────────────────────────────
 export function buildGeneratorRecipeCacheKey({ suggestion, ingredients, profile, timeLimit }) {
-  return JSON.stringify({ n: suggestion.name, i: ingredients.trim().toLowerCase(), g: profile.goals, d: profile.dietaryStyle, a: profile.allergies, cal: profile.dailyCalories, t: timeLimit || 'none', p: profile.pesachMode || false });
+  return JSON.stringify({
+    v: 'recipe-budget-v1',
+    n: suggestion.name,
+    i: ingredients.trim().toLowerCase(),
+    g: profile.goals,
+    d: profile.dietaryStyle,
+    a: profile.allergies,
+    cal: profile.dailyCalories,
+    t: timeLimit || 'none',
+    p: profile.pesachMode || false,
+    bf: profile.budgetFriendly || false,
+    c: profile.country || 'Chile',
+    s: (profile.preferredSupermarkets || []).slice().sort(),
+  });
 }
 export function buildGeneratorSuggestionsCacheKey({ ingredients, profile, dishType, difficulty, cuisine }) {
-  return JSON.stringify({ i: ingredients.trim().toLowerCase(), g: profile.goals, d: profile.dietaryStyle, a: profile.allergies, dt: dishType || '', dif: difficulty || '', c: cuisine || '' });
+  return JSON.stringify({
+    v: 'suggestions-budget-v1',
+    i: ingredients.trim().toLowerCase(),
+    g: profile.goals,
+    d: profile.dietaryStyle,
+    a: profile.allergies,
+    dt: dishType || '',
+    dif: difficulty || '',
+    c: cuisine || '',
+    bf: profile.budgetFriendly || false,
+    country: profile.country || 'Chile',
+    supers: (profile.preferredSupermarkets || []).slice().sort(),
+  });
 }
 export function buildExploreCacheKey({ query, mode, profile }) {
   return JSON.stringify({ q: query.trim().toLowerCase(), m: mode, g: profile.goals, d: profile.dietaryStyle });
 }
 export function buildMealPlanCacheKey({ planType, isTrainingDay, planPreferences, profile, savedMeals }) {
-  return JSON.stringify({ t: planType, tr: isTrainingDay, p: planPreferences, g: profile.goals, d: profile.dietaryStyle, cal: profile.dailyCalories, saved: savedMeals.map(m => m.title) });
+  return JSON.stringify({
+    v: 'mealplan-budget-v1',
+    t: planType,
+    tr: isTrainingDay,
+    p: planPreferences,
+    g: profile.goals,
+    d: profile.dietaryStyle,
+    cal: profile.dailyCalories,
+    bf: profile.budgetFriendly || false,
+    country: profile.country || 'Chile',
+    supers: (profile.preferredSupermarkets || []).slice().sort(),
+    saved: savedMeals.map(m => m.title),
+  });
 }
-export function buildShoppingCacheKey(plan) {
-  const names = plan?.days?.flatMap(d => d.meals?.flatMap(m => m.options?.map(o => o.name) ?? []) ?? []) ?? [];
-  return JSON.stringify(names.sort());
+export function buildShoppingCacheKey(plan, profile = {}) {
+  const meals = plan?.days?.flatMap(day =>
+    day.meals?.flatMap(meal =>
+      meal.options?.map(option => ({
+        day: day.dayName,
+        meal: meal.type,
+        name: option.name,
+        servings: option.selectedServings || option.servings || 1,
+      })) ?? []
+    ) ?? []
+  ) ?? [];
+
+  return JSON.stringify({
+    v: 'shopping-budget-v1',
+    meals: meals.sort((a, b) => `${a.day}-${a.meal}-${a.name}`.localeCompare(`${b.day}-${b.meal}-${b.name}`)),
+    bf: profile.budgetFriendly || false,
+    country: profile.country || 'Chile',
+    supers: (profile.preferredSupermarkets || []).slice().sort(),
+  });
+}
+
+export const CURRENCY_BY_COUNTRY = {
+  Chile: { code: 'CLP', locale: 'es-CL' },
+  Argentina: { code: 'ARS', locale: 'es-AR' },
+  México: { code: 'MXN', locale: 'es-MX' },
+  Colombia: { code: 'COP', locale: 'es-CO' },
+  Perú: { code: 'PEN', locale: 'es-PE' },
+  España: { code: 'EUR', locale: 'es-ES' },
+  Uruguay: { code: 'UYU', locale: 'es-UY' },
+  Ecuador: { code: 'USD', locale: 'es-EC' },
+  Israel: { code: 'ILS', locale: 'he-IL' },
+  'Estados Unidos': { code: 'USD', locale: 'en-US' },
+  Brasil: { code: 'BRL', locale: 'pt-BR' },
+  Venezuela: { code: 'USD', locale: 'es-VE' },
+  Bolivia: { code: 'BOB', locale: 'es-BO' },
+  Paraguay: { code: 'PYG', locale: 'es-PY' },
+};
+
+const SOUTHERN_HEMISPHERE_COUNTRIES = new Set([
+  'Chile', 'Argentina', 'Uruguay', 'Paraguay', 'Bolivia', 'Brasil', 'Perú',
+]);
+
+export function getCurrencyForCountry(country) {
+  return CURRENCY_BY_COUNTRY[country] || CURRENCY_BY_COUNTRY['Estados Unidos'];
+}
+
+export function formatCurrencyByCountry(value, country) {
+  const { code, locale } = getCurrencyForCountry(country);
+  const hasDecimals = !['CLP', 'COP', 'PYG'].includes(code);
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: code,
+    minimumFractionDigits: hasDecimals ? 0 : 0,
+    maximumFractionDigits: hasDecimals ? 0 : 0,
+  }).format(Number(value || 0));
+}
+
+export function getCurrentSeasonForCountry(country, referenceDate = new Date()) {
+  const month = referenceDate.getMonth();
+  const seasonsNorth = ['invierno', 'invierno', 'primavera', 'primavera', 'primavera', 'verano', 'verano', 'verano', 'otoño', 'otoño', 'otoño', 'invierno'];
+  const seasonsSouth = ['verano', 'verano', 'otoño', 'otoño', 'otoño', 'invierno', 'invierno', 'invierno', 'primavera', 'primavera', 'primavera', 'verano'];
+  return (SOUTHERN_HEMISPHERE_COUNTRIES.has(country) ? seasonsSouth : seasonsNorth)[month];
+}
+
+export function buildBudgetOptimizationInstruction(profile = {}) {
+  if (!profile.budgetFriendly) return '';
+
+  const country = profile.country || 'Chile';
+  const goal = profile.goals || 'una alimentación equilibrada';
+  const season = getCurrentSeasonForCountry(country);
+  const selectedMarkets = profile.preferredSupermarkets?.length
+    ? profile.preferredSupermarkets.join(', ')
+    : getSupermarketsForCountry(country).slice(0, 3).join(', ');
+
+  return `MODO "OPTIMIZAR PRESUPUESTO" ACTIVO:
+- Diseña la receta con ingredientes de bajo costo relativo en ${country}, manteniendo el objetivo nutricional de ${goal}.
+- Sustituye ingredientes caros por alternativas económicas equivalentes cuando sea posible (ejemplo: salmón por atún en conserva o jurel; quinoa por arroz integral).
+- Prioriza frutas y verduras de temporada de ${season} en ${country}.
+- Sugiere marcas blancas, formatos familiares o packs ahorro disponibles en: ${selectedMarkets}.`;
+}
+
+export function buildShoppingCostInstruction(profile = {}) {
+  const country = profile.country || 'Chile';
+  const { code } = getCurrencyForCountry(country);
+  const selectedMarkets = profile.preferredSupermarkets?.length
+    ? profile.preferredSupermarkets.join(', ')
+    : getSupermarketsForCountry(country).slice(0, 3).join(', ');
+
+  return `Usa ${code} como moneda. Estima rangos de precio realistas para ${country}, tomando como referencia: ${selectedMarkets}.
+Devuelve precios mínimos y máximos NUMÉRICOS por ingrediente, más total semanal y ahorro estimado si aplica.`;
 }
 
 // ── Schema JSON de receta (con marcas_sugeridas) ──────────────────────────────

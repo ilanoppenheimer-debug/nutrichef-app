@@ -1,4 +1,5 @@
-import { Calendar, ChefHat, Edit3, RefreshCw, X } from 'lucide-react';
+import { Calendar, ChefHat, Edit3, Minus, RefreshCw, Plus, Users, X } from 'lucide-react';
+import { parseServingsCount, scaleNutritionLabel } from '../../lib/recipeScaling.js';
 
 export default function SelectedDayMeals({
   day,
@@ -11,6 +12,7 @@ export default function SelectedDayMeals({
   onSwapConfirm,
   onSwapCancel,
   onGenerateRecipe,
+  onServingsChange,
 }) {
   if (!day) {
     return null;
@@ -65,20 +67,51 @@ export default function SelectedDayMeals({
             <div className="grid md:grid-cols-2 gap-4">
               {meal.options && meal.options.map((option, optionIndex) => (
                 <div key={`opt-${optionIndex}`} className="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-orange-300 transition-colors flex flex-col">
+                  {(() => {
+                    const baseServings = parseServingsCount(option.baseServings || option.servings || 1);
+                    const selectedServings = parseServingsCount(option.selectedServings || option.servings || baseServings);
+                    const factor = selectedServings / baseServings;
+
+                    return (
+                      <>
                   <h4 className="font-bold text-slate-800 flex justify-between items-start mb-1 gap-2">
                     {option.name}
                     {meal.options.length > 1 && <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-2 py-1 rounded-md shrink-0">Opcion {optionIndex + 1}</span>}
                   </h4>
                   <p className="text-slate-600 text-sm mb-4 flex-1">{option.description}</p>
+                  <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">Porciones</p>
+                      <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                        <Users size={14} className="text-orange-500" /> {selectedServings} personas
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onServingsChange(selectedDayIdx, mealIndex, optionIndex, selectedServings - 1)}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
+                        aria-label="Reducir porciones"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <button
+                        onClick={() => onServingsChange(selectedDayIdx, mealIndex, optionIndex, selectedServings + 1)}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 text-orange-700 transition-colors hover:bg-orange-100"
+                        aria-label="Aumentar porciones"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-2 mb-4">
                     <span className="inline-block text-xs font-semibold bg-white border border-slate-100 text-slate-600 px-2 py-1 rounded-md shadow-sm">
-                      🔥 {option.calories}
+                      🔥 {scaleNutritionLabel(option.calories, factor)}
                     </span>
                     <span className="inline-block text-xs font-semibold bg-blue-50 text-blue-600 px-2 py-1 rounded-md">
-                      🥩 {option.protein}
+                      🥩 {scaleNutritionLabel(option.protein, factor)}
                     </span>
                     <span className="inline-block text-xs font-semibold bg-green-50 text-green-600 px-2 py-1 rounded-md">
-                      🌿 {option.fiber}
+                      🌿 {scaleNutritionLabel(option.fiber, factor)}
                     </span>
                   </div>
                   <button
@@ -87,6 +120,9 @@ export default function SelectedDayMeals({
                   >
                     <ChefHat size={16} /> Ver Receta
                   </button>
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

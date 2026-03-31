@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Apple, Camera, ChefHat, ChevronRight, Flame, RefreshCw, Sparkles } from 'lucide-react';
+import { Apple, Camera, ChefHat, ChevronRight, Flame, PiggyBank, RefreshCw, Sparkles } from 'lucide-react';
 import RecipeCard from '../components/RecipeCard.jsx';
 import { useAppState } from '../context/appState.js';
 import {
+  buildBudgetOptimizationInstruction,
   buildGeneratorRecipeCacheKey,
   buildGeneratorSuggestionsCacheKey,
   buildLocaleInstruction,
@@ -85,7 +86,7 @@ const COMPLEXITY_LEVELS = [
 ];
 
 export default function GeneratorView() {
-  const { profile, favoriteRecipes } = useAppState();
+  const { profile, setProfile, favoriteRecipes } = useAppState();
   const [ingredients, setIngredients] = useState('');
   const [dishType, setDishType] = useState('Plato Principal (Salado)');
   const [complexityValue, setComplexityValue] = useState(2); // default: Normal
@@ -175,6 +176,7 @@ export default function GeneratorView() {
     const superStr = buildSupermarketInstruction(profile);
     const brandStr = buildLocalBrandInstruction(profile);
     const timeStr = buildTimeConstraint(maxTime);
+    const budgetStr = buildBudgetOptimizationInstruction(profile);
     const cuisineLabel = cuisine === 'Comida Local' ? `Cocina típica de ${profile.country || 'Chile'}` : cuisine;
 
     const prompt = `${localeStr}
@@ -184,6 +186,7 @@ ${favoriteRecipes.length > 0 ? `Le gustan: ${favoriteRecipes.map(r => r.title).j
 ${timeStr}
 ${superStr}
 ${brandStr}
+${budgetStr}
 ${complexity.promptInstructions}
 Devuelve SOLO este JSON:
 {"suggestions":[{"id":1,"name":"...","type":"...","description":"..."}]}`;
@@ -221,6 +224,7 @@ Devuelve SOLO este JSON:
     const superStr2 = buildSupermarketInstruction(profile);
     const brandStr2 = buildLocalBrandInstruction(profile);
     const timeStr2 = buildTimeConstraint(maxTime);
+    const budgetStr2 = buildBudgetOptimizationInstruction(profile);
     const cuisineLabel2 = cuisine === 'Comida Local' ? `Cocina típica de ${profile.country || 'Chile'}` : cuisine;
 
     const prompt = `${localeStr2}
@@ -230,6 +234,7 @@ Perfil: ${profileStr2}.
 ${timeStr2}
 ${superStr2}
 ${brandStr2}
+${budgetStr2}
 ${complexity.promptInstructions}
 Devuelve SOLO este JSON:
 {"title":"...","description":"...","prepTime":"...","cookTime":"...","cuisine":"...","ingredients":[{"name":"...","amount":"...","substitute":"..."}],"steps":["..."],"macros":{"calories":"...","protein":"...","carbs":"...","fat":"...","fiber":"..."},"tips":"...","marcas_sugeridas":[]}`;
@@ -375,6 +380,24 @@ Devuelve SOLO este JSON:
                   {TIME_OPTIONS.find(o => o.value === maxTime).hint}
                 </p>
               )}
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
+              <div className="pr-4">
+                <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+                  <PiggyBank size={16} /> Optimizar Presupuesto
+                </h4>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+                  Cambia ingredientes caros por alternativas más accesibles y prioriza temporada.
+                </p>
+              </div>
+              <button
+                onClick={() => setProfile(prev => ({ ...prev, budgetFriendly: !prev.budgetFriendly }))}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${profile.budgetFriendly ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-gray-600'}`}
+                aria-label="Activar optimización de presupuesto"
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${profile.budgetFriendly ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
             </div>
 
             <button

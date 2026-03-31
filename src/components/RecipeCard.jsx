@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle, Bookmark, BookOpen, CheckCircle2, ChefHat,
-  Clock, Heart, Info, MessageSquare, RefreshCw, Send,
+  Clock, Heart, Info, MessageSquare, Minus, Plus, RefreshCw, Send,
   Settings2, ShoppingBag, Star, ThumbsDown, ThumbsUp, X, Zap,
+  Users,
 } from 'lucide-react';
 import { useAppState } from '../context/appState.js';
 import { refineRecipe, extractDislikedIngredient } from '../lib/gemini.js';
 import { BRAND_LABELS, getRelevantBrandCategories, SAFE_BRANDS } from '../lib/brandDatabase.js';
+import { clampServings, parseServingsCount, scaleNutritionLabel, scaleQuantityText } from '../lib/recipeScaling.js';
 
 // ── Barra de macro ─────────────────────────────────────────────────────────────
 function MacroBar({ label, value, color, max }) {
@@ -281,14 +283,37 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const [feedbackType, setFeedbackType] = useState(null);
   const [feedbackReason, setFeedbackReason] = useState('');
   const [refinedBadge, setRefinedBadge] = useState(false);
+  const [selectedServings, setSelectedServings] = useState(parseServingsCount(initialRecipe?.servings || 1));
+
+  useEffect(() => {
+    setSelectedServings(parseServingsCount(recipe?.servings || 1));
+  }, [recipe?.servings, recipe?.title]);
 
   const isSavedForPlan = savedMeals?.some(m => m.title === recipe.title);
   const isFavorite = favoriteRecipes?.some(r => r.title === recipe.title);
   const isInterested = interestedRecipes?.some(r => r.title === recipe.title);
+  const baseServings = parseServingsCount(recipe?.servings || 1);
+  const servingsScale = selectedServings / baseServings;
+  const displayRecipe = {
+    ...recipe,
+    servings: `${selectedServings} porciones`,
+    ingredients: recipe.ingredients?.map(ing => ({
+      ...ing,
+      amount: scaleQuantityText(ing.amount, servingsScale),
+    })) || [],
+    macros: recipe.macros ? {
+      ...recipe.macros,
+      calories: scaleNutritionLabel(recipe.macros.calories, servingsScale),
+      protein: scaleNutritionLabel(recipe.macros.protein, servingsScale),
+      carbs: scaleNutritionLabel(recipe.macros.carbs, servingsScale),
+      fat: scaleNutritionLabel(recipe.macros.fat, servingsScale),
+      fiber: scaleNutritionLabel(recipe.macros.fiber, servingsScale),
+    } : recipe.macros,
+  };
 
   const toggleSaveForPlan = () => {
     if (isSavedForPlan) setSavedMeals(savedMeals.filter(m => m.title !== recipe.title));
-    else setSavedMeals([...(savedMeals || []), { title: recipe.title, calories: recipe.macros?.calories }]);
+    else setSavedMeals([...(savedMeals || []), { title: recipe.title, calories: displayRecipe.macros?.calories, servings: selectedServings }]);
   };
   const toggleFavorite = () => {
     if (isFavorite) setFavoriteRecipes(favoriteRecipes.filter(r => r.title !== recipe.title));
@@ -330,7 +355,7 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   };
 
   if (!recipe) return null;
-  const calories = parseFloat(String(recipe.macros?.calories || '0').replace(/[^\d.]/g, '')) || 0;
+  const calories = parseFloat(String(displayRecipe.macros?.calories || '0').replace(/[^\d.]/g, '')) || 0;
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-slate-100 dark:border-gray-800 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -359,10 +384,10 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
         <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold mb-3 mt-10 sm:mt-0">{recipe.cuisine || 'Receta IA'}</span>
         <h2 className="text-xl md:text-3xl font-black mb-2 pr-20 leading-tight">{recipe.title}</h2>
         <p className="text-white/80 text-sm leading-relaxed mb-4">{recipe.description}</p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-4">
           <span className="flex items-center gap-1.5 bg-black/15 px-3 py-1.5 rounded-xl text-xs font-medium"><Clock size={13} /> {recipe.prepTime || '?'}</span>
           <span className="flex items-center gap-1.5 bg-black/15 px-3 py-1.5 rounded-xl text-xs font-medium"><ChefHat size={13} /> {recipe.cookTime || '?'}</span>
-          {calories > 0 && <span className="flex items-center gap-1.5 bg-black/15 px-3 py-1.5 rounded-xl text-xs font-medium"><Zap size={13} /> {recipe.macros.calories}</span>}
+          {calories > 0 && <span className="flex items-center gap-1.5 bg-black/15 px-3 py-1.5 rounded-xl text-xs font-medium"><Zap size={13} /> {displayRecipe.macros.calories}</span>}
           {/* Botón Ajustar en el header para fácil acceso */}
           <button
             onClick={() => setShowAdjust(s => !s)}
@@ -370,6 +395,33 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
           >
             <Settings2 size={13} /> Ajustar
           </button>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-black/15 p-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider font-black text-white/70">Porciones</p>
+            <p className="text-sm font-bold flex items-center gap-2">
+              <Users size={15} /> Rinde para {selectedServings} personas
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedServings(current => clampServings(current - 1))}
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white transition-colors hover:bg-white/25"
+              aria-label="Reducir porciones"
+            >
+              <Minus size={18} />
+            </button>
+            <div className="min-w-[84px] text-center rounded-xl bg-white text-slate-900 px-3 py-2 font-black text-lg">
+              {selectedServings}
+            </div>
+            <button
+              onClick={() => setSelectedServings(current => clampServings(current + 1))}
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-900 transition-colors hover:bg-white/90"
+              aria-label="Aumentar porciones"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -389,10 +441,10 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
           <div className="bg-slate-50 dark:bg-gray-800 rounded-2xl p-5 border border-slate-100 dark:border-gray-700">
             <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">Información Nutricional</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-              <MacroBar label="Proteína" value={recipe.macros.protein} color="bg-blue-500" max={60} />
-              <MacroBar label="Carbohidratos" value={recipe.macros.carbs} color="bg-amber-400" max={120} />
-              <MacroBar label="Grasa" value={recipe.macros.fat} color="bg-rose-400" max={50} />
-              <MacroBar label="Fibra" value={recipe.macros.fiber} color="bg-green-500" max={30} />
+              <MacroBar label="Proteína" value={displayRecipe.macros.protein} color="bg-blue-500" max={60} />
+              <MacroBar label="Carbohidratos" value={displayRecipe.macros.carbs} color="bg-amber-400" max={120} />
+              <MacroBar label="Grasa" value={displayRecipe.macros.fat} color="bg-rose-400" max={50} />
+              <MacroBar label="Fibra" value={displayRecipe.macros.fiber} color="bg-green-500" max={30} />
             </div>
           </div>
         )}
@@ -403,12 +455,12 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
           <div className="md:col-span-5 space-y-3">
             <div>
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wide">
-                🛒 Ingredientes ({recipe.ingredients?.length || 0})
+                🛒 Ingredientes ({displayRecipe.ingredients?.length || 0})
               </h3>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Toca para marcar mientras cocinas</p>
             </div>
             <ul className="space-y-2">
-              {recipe.ingredients?.map((ing, i) => <IngredientRow key={i} ing={ing} />)}
+              {displayRecipe.ingredients?.map((ing, i) => <IngredientRow key={i} ing={ing} />)}
             </ul>
             {profile && <SmartShoppingGuide recipe={recipe} profile={profile} />}
           </div>
