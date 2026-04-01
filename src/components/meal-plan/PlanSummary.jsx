@@ -3,34 +3,22 @@ export default function PlanSummary({ plan }) {
     return null;
   }
 
-  return (
-    <div className="rounded-3xl border border-emerald-100 bg-[linear-gradient(135deg,rgba(236,253,245,1),rgba(255,255,255,1))] p-6 text-emerald-950 shadow-md">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700/70">Resumen</p>
-          <h3 className="mt-1 text-xl font-bold tracking-tight text-emerald-950">Tu semana ya tiene una guía clara</h3>
-          <p className="mt-2 text-sm leading-relaxed text-emerald-900/80">{plan.summary}</p>
-        </div>
+  const stats = [
+    { icon: '🔥', label: 'Calorías/día', value: plan.totalCalories },
+    { icon: '🥩', label: 'Proteína', value: plan.totalProtein },
+    plan.totalFiber ? { icon: '🌿', label: 'Fibra', value: plan.totalFiber } : null,
+    plan.days?.length ? { icon: '📅', label: 'Días', value: plan.days.length } : null,
+  ].filter(Boolean);
 
-        <div className="flex flex-wrap gap-2 lg:max-w-[280px] lg:justify-end">
-          <span className="rounded-2xl border border-white/70 bg-white px-3 py-2 text-sm font-black text-emerald-900 shadow-sm">
-            🔥 ~{plan.totalCalories}/día
-          </span>
-          <span className="rounded-2xl border border-white/70 bg-white px-3 py-2 text-sm font-black text-blue-600 shadow-sm">
-            🥩 ~{plan.totalProtein} Prot
-          </span>
-          {plan.totalFiber && (
-            <span className="rounded-2xl border border-white/70 bg-white px-3 py-2 text-sm font-black text-green-600 shadow-sm">
-              🌿 ~{plan.totalFiber} Fibra
-            </span>
-          )}
-          {plan.days?.length ? (
-            <span className="rounded-2xl border border-white/70 bg-white px-3 py-2 text-sm font-black text-slate-600 shadow-sm">
-              📅 {plan.days.length} días organizados
-            </span>
-          ) : null}
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {stats.map(({ icon, label, value }) => (
+        <div key={label} className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm text-center">
+          <p className="text-xl">{icon}</p>
+          <p className="mt-1 text-sm font-black text-slate-800">{value}</p>
+          <p className="text-[11px] font-medium text-slate-400">{label}</p>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

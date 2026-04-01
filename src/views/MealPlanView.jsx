@@ -49,12 +49,12 @@ function CollapsibleSection({
         className="flex w-full items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 text-left shadow-sm transition-colors hover:border-slate-300"
       >
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ background: 'var(--c-primary-light)', color: 'var(--c-primary)' }}>
             <Icon size={18} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-lg font-bold tracking-tight text-slate-800">{title}</h3>
-            {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+            <h3 className="text-base font-bold tracking-tight text-slate-800">{title}</h3>
+            {subtitle ? <p className="text-xs text-slate-400">{subtitle}</p> : null}
           </div>
         </div>
         {isExpanded ? <ChevronUp size={20} className="shrink-0 text-slate-400" /> : <ChevronDown size={20} className="shrink-0 text-slate-400" />}
@@ -381,7 +381,7 @@ ${RECIPE_JSON_SCHEMA}`;
             <div className={`space-y-6 ${activeTab === 'shopping' ? 'hidden lg:block' : ''}`}>
               <CollapsibleSection
                 title="Resumen Nutricional"
-                subtitle="Una vista rápida de tu objetivo semanal antes de entrar al detalle."
+                subtitle="Calorías, proteína y fibra del plan."
                 icon={BarChart3}
                 isExpanded={expandedSections.summary}
                 onToggle={() => toggleSection('summary')}
@@ -391,7 +391,7 @@ ${RECIPE_JSON_SCHEMA}`;
 
               <CollapsibleSection
                 title="Comidas del Día"
-                subtitle="Selecciona una comida, ajusta porciones y abre el detalle solo cuando lo necesites."
+                subtitle={null}
                 icon={ChefHat}
                 isExpanded={expandedSections.meals}
                 onToggle={() => toggleSection('meals')}
@@ -420,7 +420,7 @@ ${RECIPE_JSON_SCHEMA}`;
             <div className={`lg:sticky lg:top-24 space-y-6 ${activeTab === 'meals' ? 'hidden lg:block' : ''}`}>
               <CollapsibleSection
                 title="Lista de Compras"
-                subtitle="Compra por pasillos, marca avances y mantén visible el costo semanal."
+                subtitle={null}
                 icon={ShoppingCart}
                 isExpanded={expandedSections.shopping}
                 onToggle={() => toggleSection('shopping')}

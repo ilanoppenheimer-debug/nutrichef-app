@@ -115,7 +115,7 @@ function IngredientRow({ ing }) {
               {qty}
             </span>
           )}
-          <span className={`text-sm font-semibold leading-snug ${
+          <span className={`text-sm font-semibold leading-snug line-clamp-2 ${
             checked ? 'line-through text-slate-400'
             : isDanger ? 'line-through text-red-700 dark:text-red-400'
             : isDislike ? 'text-orange-700 dark:text-orange-300'
@@ -164,7 +164,7 @@ function IngredientRow({ ing }) {
               : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
           }`}>
             <AlertTriangle size={9} className="shrink-0" />
-            {isDanger ? 'Sustituto:' : 'Cambiar por:'} {ing.substitute}
+            {isDanger ? 'Sustituto:' : 'Cambiar por:'} {ing.substitute.replace(/\s+(es|son|está|están|se usa|para |que |por su |recomendad).*/i, '').trim()}
           </div>
         )}
       </div>
@@ -638,15 +638,9 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4 lg:min-w-[260px] lg:justify-end">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Estimado</p>
-                <p className="text-sm font-bold text-slate-800 dark:text-white">{estimatedCostLabel}</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-right dark:border-emerald-800 dark:bg-emerald-900/20">
-                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Costo receta</p>
-                <p className="text-base font-black text-emerald-800 dark:text-emerald-200">{estimatedCostLabel}</p>
-              </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-right dark:border-emerald-800 dark:bg-emerald-900/20">
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Costo receta</p>
+              <p className="text-base font-black text-emerald-800 dark:text-emerald-200">{estimatedCostLabel}</p>
             </div>
           </div>
         </div>

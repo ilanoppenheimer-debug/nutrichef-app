@@ -222,10 +222,7 @@ export default function SelectedDayMeals({
     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
         <Calendar className="text-orange-500" size={20} />
-        <div>
-          <h3 className="text-xl font-bold tracking-tight text-slate-800">{day.dayName}</h3>
-          <p className="text-sm text-slate-500">Menos ruido, más foco en la comida que vas a preparar.</p>
-        </div>
+        <h3 className="text-lg font-bold tracking-tight text-slate-800">{day.dayName}</h3>
       </div>
 
       {dayWarnings.length > 0 && (
