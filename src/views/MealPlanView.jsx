@@ -199,7 +199,7 @@ Devuelve SOLO este JSON:
 Perfil: ${profileStr}${favStr ? `. Inspiracion: ${favStr}` : ''}.${planPreferences ? ` Preferencias: ${planPreferences}.` : ''}${isTrainingDay ? ' Dia entrenamiento: +200kcal, prioriza carbohidratos.' : ' Dia descanso: calorias base.'}${savedMeals.length > 0 ? ` Incluir obligatorio: ${savedMeals.map(m => m.title).join(', ')}.` : ''}
 ${guardrailStr}
 ${budgetStr}
-${isWeekly ? 'No repetir el mismo menu exacto los 7 dias.' : 'Ofrece 2 opciones por tipo de comida.'}
+${isWeekly ? 'No repetir el mismo menu exacto los 7 dias. Ofrece 2 opciones distintas por tipo de comida en cada dia.' : 'Ofrece 3 opciones distintas por tipo de comida.'}
 Las descripciones de opciones de comida deben ser cortas (8-12 palabras), directas y sin frases vacías.
 Devuelve SOLO este JSON:
 {"summary":"...","totalCalories":"...","totalProtein":"...","totalFiber":"...","days":[{"dayName":"${targetDayName}","meals":[{"type":"Desayuno","options":[{"name":"...","description":"...","calories":"...","protein":"...","fiber":"...","servings":1}]}]}]}`;

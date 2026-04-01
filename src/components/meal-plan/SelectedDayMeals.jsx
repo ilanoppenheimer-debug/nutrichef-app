@@ -266,7 +266,7 @@ export default function SelectedDayMeals({
                   <div className={`shrink-0 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${theme.badge}`}>
                     {meal.type}
                   </div>
-                  <span className="flex-1 truncate text-sm font-bold text-slate-800">{option.name}</span>
+                  <span className="flex-1 line-clamp-2 text-sm font-bold text-slate-800 leading-snug">{option.name}</span>
                   <span className={`shrink-0 rounded-xl px-3 py-1 text-xs font-black ${theme.pill}`}>
                     {scaleNutritionLabel(option.calories, factor)}
                   </span>

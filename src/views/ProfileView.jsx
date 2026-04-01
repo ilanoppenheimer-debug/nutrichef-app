@@ -244,7 +244,7 @@ export default function ProfileView() {
         <div className="grid md:grid-cols-2 gap-5">
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1"><Apple size={12} className="text-green-500" /> Estilo de Dieta</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="flex flex-wrap gap-2">
               {DIETARY_STYLES.map(d => {
                 const selected = profile.dietaryStyle === d;
                 const meta = DIETARY_META[d] || DIETARY_META.Ninguna;
@@ -252,14 +252,14 @@ export default function ProfileView() {
                   <button
                     key={d}
                     onClick={() => setProfile({ ...profile, dietaryStyle: d })}
-                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                       selected
                         ? meta.active
                         : 'border-slate-200 bg-white text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-300'
                     }`}
                   >
                     <span className="text-sm">{meta.icon}</span>
-                    <span className="flex-1 leading-tight">{d}</span>
+                    <span>{d}</span>
                     {selected && <CheckCircle2 size={12} className="shrink-0" />}
                   </button>
                 );
@@ -268,7 +268,7 @@ export default function ProfileView() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1"><BookOpen size={12} className="text-purple-500" /> Dieta Religiosa</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="flex flex-wrap gap-2">
               {RELIGIOUS_DIETS.map(d => {
                 const selected = profile.religiousDiet === d;
                 const meta = RELIGIOUS_META[d] || RELIGIOUS_META.Ninguna;
@@ -276,14 +276,14 @@ export default function ProfileView() {
                   <button
                     key={d}
                     onClick={() => setProfile({ ...profile, religiousDiet: d })}
-                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                       selected
                         ? meta.active
                         : 'border-slate-200 bg-white text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-300'
                     }`}
                   >
                     <span className="text-sm">{meta.icon}</span>
-                    <span className="flex-1 leading-tight">{d}</span>
+                    <span>{d}</span>
                     {selected && d !== 'Ninguna' && <Lock size={11} className="shrink-0" />}
                     {selected && d === 'Ninguna' && <CheckCircle2 size={12} className="shrink-0" />}
                   </button>

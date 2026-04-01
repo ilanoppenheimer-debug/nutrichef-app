@@ -649,163 +649,159 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
       <div className="space-y-4 px-4 pb-5 pt-4 sm:px-5 md:px-6 md:pb-6">
         {showAdjust && <AdjustPanel recipe={recipe} onRefined={handleRefined} onClose={() => { setShowAdjust(false); setHeroPreset(''); }} initialInstruction={heroPreset} />}
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[0.95fr_1.15fr] lg:items-start lg:gap-6">
-          <div className="space-y-4">
-            <SectionCard title={`Ingredientes (${displayRecipe.ingredients?.length || 0})`} icon={ShoppingBag} isOpen={openSections.ingredients} onToggle={() => toggleSection('ingredients')} badge={`${selectedServings} pers.`}>
-              <ul className="space-y-2.5">
-                {displayRecipe.ingredients?.map((ing, index) => <IngredientRow key={index} ing={ing} />)}
-              </ul>
-            </SectionCard>
-
-            {profile && (
-              <SectionCard title="Marcas Sugeridas" icon={ShieldCheck} isOpen={openSections.brands} onToggle={() => toggleSection('brands')} badge={verifiedBrands.length ? `${verifiedBrands.length} seguras` : 'Filtro total'}>
-                <BrandSuggestions brands={verifiedBrands} />
-              </SectionCard>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            {recipe.macros && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                <div className="mb-3 flex items-center gap-2">
-                  <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                    Nutrición {showPer100g ? '/ 100g' : '/ porción'}
-                  </h4>
-                  {canShowPer100g && (
-                    <>
-                      <span className="text-[10px] font-semibold text-slate-400">{showPer100g ? '100g' : 'Total'}</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowPer100g(v => !v)}
-                        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${showPer100g ? '' : 'bg-slate-200 dark:bg-gray-700'}`}
-                        style={showPer100g ? { background: 'var(--c-primary)' } : {}}
-                        aria-label="Alternar modo por 100g"
-                      >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${showPer100g ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center divide-x divide-slate-100 overflow-x-auto no-scrollbar dark:divide-gray-700">
-                  {[
-                    { label: 'Cal', value: displayMacros?.calories, color: 'text-orange-600 dark:text-orange-400' },
-                    { label: 'Prot', value: displayMacros?.protein, color: 'text-blue-600 dark:text-blue-400' },
-                    { label: 'Carb', value: displayMacros?.carbs, color: 'text-amber-600 dark:text-amber-400' },
-                    { label: 'Gra', value: displayMacros?.fat, color: 'text-rose-600 dark:text-rose-400' },
-                    { label: 'Fib', value: displayMacros?.fiber, color: 'text-green-600 dark:text-green-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="flex-1 shrink-0 px-3 py-1 text-center">
-                      <p className={`text-sm font-black ${color}`}>{value || '—'}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {recipe.seguridad && (
-                  <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
-                    <ShieldCheck size={13} className="shrink-0" />
-                    {recipe.seguridad}
-                  </div>
+        <div className="space-y-4">
+          {recipe.macros && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-3 flex items-center gap-2">
+                <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Nutrición {showPer100g ? '/ 100g' : '/ porción'}
+                </h4>
+                {canShowPer100g && (
+                  <>
+                    <span className="text-[10px] font-semibold text-slate-400">{showPer100g ? '100g' : 'Total'}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPer100g(v => !v)}
+                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${showPer100g ? '' : 'bg-slate-200 dark:bg-gray-700'}`}
+                      style={showPer100g ? { background: 'var(--c-primary)' } : {}}
+                      aria-label="Alternar modo por 100g"
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${showPer100g ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </>
                 )}
-              </section>
-            )}
-
-            {adjustedIngredientsCount > 0 && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
-                Hemos ajustado {adjustedIngredientsCount} ingrediente{adjustedIngredientsCount === 1 ? '' : 's'} según tus preferencias.
               </div>
-            )}
-
-            <SectionCard title={`Instrucciones (${recipe.steps?.length || 0})`} icon={BookOpen} isOpen={openSections.steps} onToggle={() => toggleSection('steps')}>
-              <div className="space-y-4">
-                {recipe.steps?.map((step, index) => (
-                  <div key={index} className="flex gap-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ background: 'var(--c-primary)' }}>
-                      {index + 1}
-                    </div>
-                    <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                      {typeof step === 'string' ? step : step.text || JSON.stringify(step)}
-                    </p>
+              <div className="flex items-center divide-x divide-slate-100 overflow-x-auto no-scrollbar dark:divide-gray-700">
+                {[
+                  { label: 'Cal', value: displayMacros?.calories, color: 'text-orange-600 dark:text-orange-400' },
+                  { label: 'Prot', value: displayMacros?.protein, color: 'text-blue-600 dark:text-blue-400' },
+                  { label: 'Carb', value: displayMacros?.carbs, color: 'text-amber-600 dark:text-amber-400' },
+                  { label: 'Gra', value: displayMacros?.fat, color: 'text-rose-600 dark:text-rose-400' },
+                  { label: 'Fib', value: displayMacros?.fiber, color: 'text-green-600 dark:text-green-400' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex-1 shrink-0 px-3 py-1 text-center">
+                    <p className={`text-sm font-black ${color}`}>{value || '—'}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
                   </div>
                 ))}
               </div>
-            </SectionCard>
-
-            {recipe.tips && typeof recipe.tips === 'string' && (
-              <SectionCard title="Notas del Chef" icon={Info} isOpen={openSections.tips} onToggle={() => toggleSection('tips')}>
-                <p className="text-sm leading-relaxed text-blue-900 dark:text-blue-200"><span className="font-bold">Tip: </span>{recipe.tips}</p>
-              </SectionCard>
-            )}
-
-            {recipe._refinements?.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Ajustes aplicados</p>
-                <div className="space-y-1.5">
-                  {recipe._refinements.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <Settings2 size={10} />
-                      <span>"{item.instruction}"</span>
-                      <span className="text-[10px] opacity-50">{new Date(item.at).toLocaleDateString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-2xl border p-4" style={{ background: 'var(--c-primary-light)', borderColor: 'var(--c-primary-border)' }}>
-              <h4 className="mb-1 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--c-primary-text)' }}>
-                <RefreshCw size={13} /> ¿Ya la preparaste?
-              </h4>
-              <p className="mb-3 text-xs opacity-60" style={{ color: 'var(--c-primary-text)' }}>Tu opinión mejora las próximas recomendaciones.</p>
-
-              {!feedbackGiven ? (
-                !feedbackType ? (
-                  <div className="flex gap-2">
-                    <button onClick={() => setFeedbackType('like')} className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-green-200 bg-white py-2.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 dark:bg-gray-800 dark:text-green-400">
-                      <ThumbsUp size={16} /> Me encantó
-                    </button>
-                    <button onClick={() => setFeedbackType('dislike')} className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-red-200 bg-white py-2.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:bg-gray-800 dark:text-red-400">
-                      <ThumbsDown size={16} /> No me gustó
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className={`text-xs font-bold ${feedbackType === 'like' ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
-                      {feedbackType === 'like' ? '¿Qué fue lo mejor?' : '¿Qué no te gustó?'}
-                    </p>
-                    <div className="flex gap-2">
-                      <input type="text" value={feedbackReason} onChange={e => setFeedbackReason(e.target.value)} onKeyDown={e => e.key === 'Enter' && submitFeedback()} placeholder={feedbackType === 'like' ? 'Ej: el toque de ajo...' : 'Ej: muy seco...'} className="flex-1 rounded-xl border bg-white p-2.5 text-xs outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                      <button onClick={submitFeedback} disabled={!feedbackReason.trim()} className={`rounded-xl px-3 text-xs font-bold text-white disabled:opacity-50 ${feedbackType === 'like' ? 'bg-green-600' : 'bg-red-600'}`}>✓</button>
-                      <button onClick={() => { setFeedbackType(null); setFeedbackReason(''); }} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 dark:border-gray-600 dark:bg-gray-800">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <div className="flex items-center gap-2 rounded-xl bg-green-100 p-3 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                  <CheckCircle2 size={13} /> ¡Guardado en tu perfil!
+              {recipe.seguridad && (
+                <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+                  <ShieldCheck size={13} className="shrink-0" />
+                  {recipe.seguridad}
                 </div>
               )}
+            </section>
+          )}
+
+          <SectionCard title={`Ingredientes (${displayRecipe.ingredients?.length || 0})`} icon={ShoppingBag} isOpen={openSections.ingredients} onToggle={() => toggleSection('ingredients')} badge={`${selectedServings} pers.`}>
+            <ul className="space-y-2.5">
+              {displayRecipe.ingredients?.map((ing, index) => <IngredientRow key={index} ing={ing} />)}
+            </ul>
+          </SectionCard>
+
+          <SectionCard title={`Instrucciones (${recipe.steps?.length || 0})`} icon={BookOpen} isOpen={openSections.steps} onToggle={() => toggleSection('steps')}>
+            <div className="space-y-4">
+              {recipe.steps?.map((step, index) => (
+                <div key={index} className="flex gap-3">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ background: 'var(--c-primary)' }}>
+                    {index + 1}
+                  </div>
+                  <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    {typeof step === 'string' ? step : step.text || JSON.stringify(step)}
+                  </p>
+                </div>
+              ))}
             </div>
+          </SectionCard>
 
+          {profile && (
+            <SectionCard title="Marcas Sugeridas" icon={ShieldCheck} isOpen={openSections.brands} onToggle={() => toggleSection('brands')} badge={verifiedBrands.length ? `${verifiedBrands.length} seguras` : 'Filtro total'}>
+              <BrandSuggestions brands={verifiedBrands} />
+            </SectionCard>
+          )}
+
+          {recipe.tips && typeof recipe.tips === 'string' && (
+            <SectionCard title="Notas del Chef" icon={Info} isOpen={openSections.tips} onToggle={() => toggleSection('tips')}>
+              <p className="text-sm leading-relaxed text-blue-900 dark:text-blue-200"><span className="font-bold">Tip: </span>{recipe.tips}</p>
+            </SectionCard>
+          )}
+
+          {adjustedIngredientsCount > 0 && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+              Hemos ajustado {adjustedIngredientsCount} ingrediente{adjustedIngredientsCount === 1 ? '' : 's'} según tus preferencias.
+            </div>
+          )}
+
+          {recipe._refinements?.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-              <h4 className="mb-1 flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-white">
-                <MessageSquare size={13} style={{ color: 'var(--c-primary)' }} /> Pregúntale al Chef IA
-              </h4>
-              <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">¿Dudas sobre técnica, sustitutos o tiempos?</p>
-
-              {chefAnswer && (
-                <div className="mb-3 rounded-xl border p-3 text-xs animate-in fade-in" style={{ background: 'var(--c-primary-light)', borderColor: 'var(--c-primary-border)', color: 'var(--c-primary-text)' }}>
-                  <span className="mb-1 block font-bold">Chef:</span>{chefAnswer}
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <input type="text" value={chefQuestion} onChange={e => setChefQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askChef()} placeholder="Ej: ¿A cuántos grados el horno?" className="flex-1 rounded-xl border border-slate-200 bg-white p-2.5 text-xs outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-                <button onClick={askChef} disabled={asking || !chefQuestion.trim()} className="flex items-center rounded-xl bg-slate-800 px-4 text-white disabled:opacity-60 dark:bg-slate-600">
-                  {asking ? <RefreshCw className="animate-spin" size={14} /> : <Send size={14} />}
-                </button>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Ajustes aplicados</p>
+              <div className="space-y-1.5">
+                {recipe._refinements.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <Settings2 size={10} />
+                    <span>"{item.instruction}"</span>
+                    <span className="text-[10px] opacity-50">{new Date(item.at).toLocaleDateString()}</span>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+
+          <div className="rounded-2xl border p-4" style={{ background: 'var(--c-primary-light)', borderColor: 'var(--c-primary-border)' }}>
+            <h4 className="mb-1 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--c-primary-text)' }}>
+              <RefreshCw size={13} /> ¿Ya la preparaste?
+            </h4>
+            <p className="mb-3 text-xs opacity-60" style={{ color: 'var(--c-primary-text)' }}>Tu opinión mejora las próximas recomendaciones.</p>
+
+            {!feedbackGiven ? (
+              !feedbackType ? (
+                <div className="flex gap-2">
+                  <button onClick={() => setFeedbackType('like')} className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-green-200 bg-white py-2.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 dark:bg-gray-800 dark:text-green-400">
+                    <ThumbsUp size={16} /> Me encantó
+                  </button>
+                  <button onClick={() => setFeedbackType('dislike')} className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-red-200 bg-white py-2.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:bg-gray-800 dark:text-red-400">
+                    <ThumbsDown size={16} /> No me gustó
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className={`text-xs font-bold ${feedbackType === 'like' ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
+                    {feedbackType === 'like' ? '¿Qué fue lo mejor?' : '¿Qué no te gustó?'}
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="text" value={feedbackReason} onChange={e => setFeedbackReason(e.target.value)} onKeyDown={e => e.key === 'Enter' && submitFeedback()} placeholder={feedbackType === 'like' ? 'Ej: el toque de ajo...' : 'Ej: muy seco...'} className="flex-1 rounded-xl border bg-white p-2.5 text-xs outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                    <button onClick={submitFeedback} disabled={!feedbackReason.trim()} className={`rounded-xl px-3 text-xs font-bold text-white disabled:opacity-50 ${feedbackType === 'like' ? 'bg-green-600' : 'bg-red-600'}`}>✓</button>
+                    <button onClick={() => { setFeedbackType(null); setFeedbackReason(''); }} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 dark:border-gray-600 dark:bg-gray-800">
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="flex items-center gap-2 rounded-xl bg-green-100 p-3 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <CheckCircle2 size={13} /> ¡Guardado en tu perfil!
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+            <h4 className="mb-1 flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-white">
+              <MessageSquare size={13} style={{ color: 'var(--c-primary)' }} /> Pregúntale al Chef IA
+            </h4>
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">¿Dudas sobre técnica, sustitutos o tiempos?</p>
+
+            {chefAnswer && (
+              <div className="mb-3 rounded-xl border p-3 text-xs animate-in fade-in" style={{ background: 'var(--c-primary-light)', borderColor: 'var(--c-primary-border)', color: 'var(--c-primary-text)' }}>
+                <span className="mb-1 block font-bold">Chef:</span>{chefAnswer}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input type="text" value={chefQuestion} onChange={e => setChefQuestion(e.target.value)} onKeyDown={e => e.key === 'Enter' && askChef()} placeholder="Ej: ¿A cuántos grados el horno?" className="flex-1 rounded-xl border border-slate-200 bg-white p-2.5 text-xs outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              <button onClick={askChef} disabled={asking || !chefQuestion.trim()} className="flex items-center rounded-xl bg-slate-800 px-4 text-white disabled:opacity-60 dark:bg-slate-600">
+                {asking ? <RefreshCw className="animate-spin" size={14} /> : <Send size={14} />}
+              </button>
             </div>
           </div>
         </div>
