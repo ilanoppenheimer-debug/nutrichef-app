@@ -1,5 +1,6 @@
 export const ROUTES = {
   home: '/',
+  cook: '/cook',
   create: '/create',
   explore: '/explore',
   saved: '/saved',

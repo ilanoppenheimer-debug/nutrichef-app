@@ -8,6 +8,7 @@ import { ROUTES } from './routes/paths.js';
 import { useAppState } from './context/appState.js';
 
 const AppLayout = lazy(() => import('./components/layout/AppLayout.jsx'));
+const CookingHome = lazy(() => import('./views/CookingHome.jsx'));
 const GeneratorView = lazy(() => import('./views/GeneratorView.jsx'));
 const ExploreView = lazy(() => import('./views/ExploreView.jsx'));
 const MealPlanView = lazy(() => import('./views/MealPlanView.jsx'));
@@ -84,7 +85,8 @@ function AppRoutes() {
               </OnboardingGuard>
             }
           >
-            <Route index element={<Navigate to={ROUTES.create} replace />} />
+            <Route index element={<Navigate to={ROUTES.cook} replace />} />
+            <Route path={ROUTES.cook.slice(1)} element={<CookingHome />} />
             <Route path={ROUTES.create.slice(1)} element={<GeneratorView />} />
             <Route path={ROUTES.explore.slice(1)} element={<ExploreView />} />
             <Route path={ROUTES.saved.slice(1)} element={<SavedView />} />
@@ -92,7 +94,7 @@ function AppRoutes() {
             <Route path={ROUTES.profile.slice(1)} element={<ProfileView />} />
             <Route path={ROUTES.settings.slice(1)} element={<SettingsView />} />
             <Route path="add-recipe" element={<AddRecipeView />} />
-            <Route path="*" element={<Navigate to={ROUTES.create} replace />} />
+            <Route path="*" element={<Navigate to={ROUTES.cook} replace />} />
           </Route>
         </Routes>
       </Suspense>

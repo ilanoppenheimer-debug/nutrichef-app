@@ -6,14 +6,14 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import TipsWidget from '../TipsWidget.jsx';
 
 const DESKTOP_NAV_ITEMS = [
-  { to: ROUTES.create, label: 'Crear', icon: Utensils },
+  { to: ROUTES.cook, label: 'Cocinar', icon: ChefHat },
   { to: ROUTES.explore, label: 'Explorar', icon: Compass },
   { to: ROUTES.saved, label: 'Guardados', icon: Bookmark },
   { to: ROUTES.plan, label: 'Plan', icon: Calendar },
 ];
 
 const MOBILE_NAV_ITEMS = [
-  { to: ROUTES.create, label: 'Generar', icon: Utensils },
+  { to: ROUTES.cook, label: 'Cocinar', icon: ChefHat },
   { to: ROUTES.explore, label: 'Explorar', icon: Compass },
   { to: ROUTES.plan, label: 'Plan', icon: Calendar },
   { to: ROUTES.saved, label: 'Guardados', icon: Bookmark },
@@ -88,7 +88,7 @@ export default function AppLayout() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <NavLink to={ROUTES.create} className="flex items-center gap-2 shrink-0" style={{ color: 'var(--c-primary)' }}>
+          <NavLink to={ROUTES.cook} className="flex items-center gap-2 shrink-0" style={{ color: 'var(--c-primary)' }}>
             <ChefHat size={26} />
             <h1 className="text-lg font-black tracking-tight hidden sm:block">NutriChef IA</h1>
           </NavLink>
