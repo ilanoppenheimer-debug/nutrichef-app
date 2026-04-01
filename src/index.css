@@ -2,31 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Variables del tema por defecto (naranja) — ThemeContext las sobreescribe dinámicamente */
+/* ─── Design System ─────────────────────────────────────────────────
+   8pt spacing grid, semantic color tokens, mobile-first utilities
+   All theme colors are overridden dynamically by ThemeContext.jsx
+   ──────────────────────────────────────────────────────────────── */
+
 :root {
+  /* Brand / Primary */
   --c-primary: #ea580c;
   --c-primary-light: #fff7ed;
   --c-primary-border: #fed7aa;
   --c-primary-text: #9a3412;
   --c-accent: #f97316;
+
+  /* Backgrounds */
   --c-bg: #fff7ed;
   --c-bg-dark: #1c0a00;
+
+  /* Spacing scale (8pt grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Typography scale */
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-lg: 1.0625rem;   /* 17px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 350ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ─── Base Layer ───────────────────────────────────────────────── */
 @layer base {
-  body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+  html {
+    /* Ensure smooth tap response on iOS */
+    -webkit-tap-highlight-color: transparent;
   }
 
-  h1,
-  h2,
-  h3,
-  h4 {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  h1, h2, h3, h4 {
     @apply font-bold tracking-tight;
   }
 
   button {
     @apply rounded-xl;
+    touch-action: manipulation;
+  }
+
+  /* 44px minimum touch target for accessibility */
+  button, a[role="button"] {
+    min-height: 44px;
   }
 
   input:not([type='checkbox']):not([type='radio']):not([type='range']),
@@ -37,20 +86,71 @@
   }
 }
 
-/* Dark mode base */
+/* ─── Dark Mode ────────────────────────────────────────────────── */
 .dark body {
   background-color: #020617;
   color: #f1f5f9;
 }
 
-/* Scrollbar oculto en nav horizontal */
+/* ─── Scrollbar ────────────────────────────────────────────────── */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Animaciones */
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slide-in-from-bottom-4 { from { transform: translateY(1rem); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* ─── Animations ───────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
-.animate-in { animation-duration: 0.4s; animation-fill-mode: both; }
-.fade-in { animation-name: fade-in; }
+@keyframes slide-in-from-bottom-4 {
+  from { transform: translateY(1rem); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes slide-in-from-top-2 {
+  from { transform: translateY(-0.5rem); opacity: 0; }
+  to   { transform: translateY(0);       opacity: 1; }
+}
+
+@keyframes zoom-in-75 {
+  from { transform: scale(0.75); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.animate-in        { animation-duration: 0.35s; animation-fill-mode: both; animation-timing-function: var(--ease-default); }
+.fade-in           { animation-name: fade-in; }
 .slide-in-from-bottom-4 { animation-name: slide-in-from-bottom-4; }
+.slide-in-from-top-2    { animation-name: slide-in-from-top-2; }
+.zoom-in-75        { animation-name: zoom-in-75; }
+.duration-150      { animation-duration: 150ms; }
+.duration-200      { animation-duration: 200ms; }
+
+/* ─── Component Utilities ──────────────────────────────────────── */
+
+/* Cards with consistent border + shadow */
+.card {
+  @apply bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm;
+}
+
+/* Primary button — uses brand color */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-opacity active:opacity-75;
+  background: var(--c-primary);
+  min-height: 44px;
+}
+
+/* Secondary / ghost button */
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors hover:border-slate-300 dark:hover:border-gray-600;
+  min-height: 44px;
+}
+
+/* Safe-area aware bottom padding (for iPhone notch) */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+}
+
+/* Press feedback for interactive elements */
+.press-feedback {
+  @apply active:scale-[0.97] transition-transform;
+}

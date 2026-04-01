@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChefHat, ChevronRight, Compass, RefreshCw, Search, Sparkles, Zap } from 'lucide-react';
+import { ChefHat, ChevronLeft, RefreshCw, Search, Sparkles, Zap } from 'lucide-react';
 import RecipeCard from '../components/RecipeCard.jsx';
 import { useAppState } from '../context/appState.js';
 import {
@@ -127,89 +127,100 @@ ${RECIPE_JSON_SCHEMA}`;
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-8">
+    <div className="w-full max-w-6xl mx-auto space-y-6">
 
-      {/* Header con búsqueda unificada */}
-      <div className="p-8 rounded-3xl shadow-md text-white text-center" style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
-        <Compass size={40} className="mx-auto mb-4 opacity-90" />
-        <h2 className="text-3xl font-bold mb-2">Explorar</h2>
-        <p className="text-indigo-100 mb-6 max-w-lg mx-auto text-sm">
-          Escribe un plato, un ingrediente o lo que se te antoje. Busca primero en recetas guardadas, luego con IA.
-        </p>
-
-        {(profile.religiousDiet && profile.religiousDiet !== 'Ninguna') && (
-          <p className="text-indigo-200 text-xs mb-2">
-            🔍 Filtrando para <strong>{profile.religiousDiet}</strong> · {profile.country || 'Chile'}
+      {/* Compact search header */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">Explorar</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Busca un plato, ingrediente o pídele algo a la IA.
           </p>
-        )}
-        {/* Mode filter chips */}
-        <div className="flex justify-center gap-2 mb-4 flex-wrap">
+        </div>
+
+        {/* Search input */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              placeholder='Ej: falafel en airfryer, algo con pollo...'
+              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-2xl text-sm outline-none focus:border-transparent text-slate-800 dark:text-white placeholder:text-slate-400"
+              style={{ '--tw-ring-color': 'var(--c-primary)' }}
+            />
+          </div>
+          <button
+            onClick={handleSearch}
+            disabled={loading || !query.trim()}
+            className="px-5 py-3 rounded-2xl text-white font-bold text-sm disabled:opacity-50 shrink-0 min-h-[48px] transition-opacity active:opacity-80"
+            style={{ background: 'var(--c-primary)' }}
+          >
+            Buscar
+          </button>
+        </div>
+
+        {/* Mode chips — scrollable, secondary */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
           {[
             { mode: null, label: '🔮 Auto' },
             { mode: 'local', label: '⚡ Local' },
-            { mode: 'literal', label: '🎯 Literal' },
+            { mode: 'literal', label: '🎯 Exacto' },
             { mode: 'creative', label: '✨ Creativo' },
           ].map(({ mode, label }) => (
             <button
               key={label}
               onClick={() => setForcedMode(mode)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
                 forcedMode === mode
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'bg-white/15 text-white/80 hover:bg-white/25'
+                  ? 'text-white border-transparent'
+                  : 'bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
               }`}
+              style={forcedMode === mode ? { background: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : {}}
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="flex gap-2 bg-white/10 p-2 rounded-2xl backdrop-blur-md max-w-2xl mx-auto border border-white/20">
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            placeholder='"falafel en airfryer", "algo con pollo", "postre rápido"...'
-            className="flex-1 bg-transparent text-white placeholder:text-indigo-300 px-4 py-2 outline-none text-sm"
-          />
-          <button
-            onClick={handleSearch}
-            disabled={loading || !query.trim()}
-            className="bg-white text-indigo-600 px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-50 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm shrink-0 min-h-[44px]"
-          >
-            <Search size={18} /> Buscar
-          </button>
-        </div>
+
+        {/* Dietary filter notice */}
+        {profile.religiousDiet && profile.religiousDiet !== 'Ninguna' && (
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            🔍 Filtrando para <strong className="text-slate-600 dark:text-slate-300">{profile.religiousDiet}</strong> · {profile.country || 'Chile'}
+          </p>
+        )}
       </div>
 
       {/* Sin resultados locales — escape a IA */}
       {noLocalResults && !loading && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-800 p-8 text-center space-y-4 animate-in fade-in shadow-md">
-          <p className="text-slate-600 dark:text-slate-300 font-semibold">
-            No encontramos "<span className="text-indigo-600 dark:text-indigo-400">{query}</span>" en el banco local.
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 text-center space-y-3 animate-in fade-in">
+          <p className="text-slate-600 dark:text-slate-300 font-semibold text-sm">
+            No encontramos <span className="font-black text-slate-800 dark:text-white">"{query}"</span> en el banco local.
           </p>
           {detectedMode === 'literal' && (
-            <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-xl inline-block">
-              🎯 Modo Literal — la IA generará exactamente esa receta
+            <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-gray-800 px-3 py-2 rounded-xl inline-block">
+              🎯 Modo Exacto — la IA generará esa receta específica
             </p>
           )}
           <button
             onClick={handleSearchWithAI}
-            className="mx-auto flex items-center gap-2 px-6 py-3 rounded-2xl text-white font-bold text-sm min-h-[48px]"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}
+            className="mx-auto flex items-center gap-2 px-6 py-3 rounded-2xl text-white font-bold text-sm min-h-[48px] active:opacity-80 transition-opacity"
+            style={{ background: 'var(--c-primary)' }}
           >
-            <Sparkles size={18} />
-            {detectedMode === 'literal' ? `✨ Generar "${query}" con IA` : '✨ Crear opciones con IA'}
+            <Sparkles size={16} />
+            {detectedMode === 'literal' ? `Generar "${query}" con IA` : 'Crear opciones con IA'}
           </button>
-          <p className="text-xs text-slate-400 dark:text-slate-500">La receta se guardará en tu historial.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Se guardará en tu historial automáticamente.</p>
         </div>
       )}
 
       {/* Estado de carga */}
       {loading && (
-        <div className="flex flex-col items-center justify-center py-12 text-indigo-500">
-          <RefreshCw className="animate-spin mb-4" size={40} />
-          <p className="font-medium animate-pulse">Buscando con IA...</p>
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <RefreshCw className="animate-spin" size={32} style={{ color: 'var(--c-primary)' }} />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">Buscando con IA...</p>
         </div>
       )}
 
@@ -220,43 +231,48 @@ ${RECIPE_JSON_SCHEMA}`;
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white">Resultados para "{query}"</h3>
             {sourceLabel === 'local' && (
-              <span className="flex items-center gap-1 text-xs font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                <Zap size={11} /> Instantáneo
+              <span className="flex items-center gap-1 text-xs font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800">
+                <Zap size={11} /> Local
               </span>
             )}
             {sourceLabel === 'ia-literal' && (
-              <span className="flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
-                🎯 Modo Literal
+              <span className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full border text-white" style={{ background: 'var(--c-primary)', borderColor: 'var(--c-primary)' }}>
+                🎯 Exacto
               </span>
             )}
             {sourceLabel === 'ia-creative' && (
-              <span className="flex items-center gap-1 text-xs font-bold text-purple-700 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full">
-                <Sparkles size={11} /> IA Creativa
+              <span className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full border text-white" style={{ background: 'var(--c-primary)', borderColor: 'var(--c-primary)' }}>
+                <Sparkles size={11} /> IA
               </span>
             )}
             {sourceLabel === 'local' && (
-              <button onClick={handleSearchWithAI} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 ml-auto">
+              <button onClick={handleSearchWithAI} className="text-xs font-semibold hover:underline flex items-center gap-1 ml-auto" style={{ color: 'var(--c-primary)' }}>
                 <Sparkles size={11} /> Más opciones con IA
               </button>
             )}
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-3">
             {suggestions.map(sugg => (
-              <div key={sugg.id} className="bg-white dark:bg-gray-900 p-5 rounded-2xl shadow-md border border-slate-200 dark:border-gray-700 flex flex-col hover:shadow-lg transition-shadow">
+              <div key={sugg.id} className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 flex flex-col hover:border-slate-300 dark:hover:border-gray-600 transition-colors">
                 <div className="flex items-start justify-between mb-2">
-                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
                     {sugg.type}
                   </span>
-                  {sugg._local && <Zap size={13} className="text-green-500 shrink-0" title="Receta local, sin IA" />}
+                  {sugg._local && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 dark:text-green-400">
+                      <Zap size={11} /> Instantáneo
+                    </span>
+                  )}
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-white mb-1 leading-tight">{sugg.name}</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-xs mb-4 flex-1 leading-relaxed">{sugg.description}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-xs mb-3 flex-1 leading-relaxed line-clamp-2">{sugg.description}</p>
                 <button
                   onClick={() => generateFromSuggestion(sugg)}
-                  className="w-full py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold rounded-xl hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity min-h-[44px]"
+                  style={{ background: 'var(--c-primary)' }}
                 >
-                  <ChefHat size={16} /> Ver receta
+                  <ChefHat size={15} /> Ver receta
                 </button>
               </div>
             ))}
@@ -266,9 +282,9 @@ ${RECIPE_JSON_SCHEMA}`;
 
       {/* Generando receta con IA */}
       {generatingRecipe && !recipe && (
-        <div className="flex flex-col items-center justify-center py-12 text-indigo-500">
-          <RefreshCw className="animate-spin mb-4" size={40} />
-          <p className="font-medium animate-pulse">Generando receta...</p>
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <RefreshCw className="animate-spin" size={32} style={{ color: 'var(--c-primary)' }} />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">Generando receta...</p>
         </div>
       )}
 
@@ -277,9 +293,9 @@ ${RECIPE_JSON_SCHEMA}`;
         <div>
           <button
             onClick={() => { setRecipe(null); setSuggestions(suggestions); }}
-            className="mb-4 text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1 hover:underline"
+            className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
-            <ChevronRight className="rotate-180" size={18} /> Volver
+            <ChevronLeft size={18} /> Volver a resultados
           </button>
           <RecipeCard recipe={recipe} />
         </div>
@@ -288,22 +304,22 @@ ${RECIPE_JSON_SCHEMA}`;
       {/* Estado vacío — recetas rápidas populares sin búsqueda */}
       {!loading && !suggestions && !recipe && !generatingRecipe && (
         <div className="space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-            <Zap size={14} className="text-green-500" /> Recetas rápidas — sin IA
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+            <Zap size={13} className="text-green-500" /> Recetas rápidas · sin IA
           </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 gap-3">
             {QUICK_PICKS.map(sugg => (
               <div
                 key={sugg.id}
                 onClick={() => generateFromSuggestion(sugg)}
-                className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-lg transition-all group"
+                className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 cursor-pointer hover:border-slate-300 dark:hover:border-gray-600 active:scale-[0.98] transition-all group"
               >
-                <div className="flex items-start justify-between mb-1">
-                  <span className="text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full">{sugg.type}</span>
-                  <Zap size={12} className="text-green-400" />
+                <div className="flex items-start justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{sugg.type}</span>
+                  <Zap size={12} className="text-green-500 shrink-0" />
                 </div>
-                <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{sugg.name}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-tight">{sugg.description}</p>
+                <p className="font-bold text-sm text-slate-800 dark:text-white leading-snug">{sugg.name}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-tight line-clamp-2">{sugg.description}</p>
               </div>
             ))}
           </div>

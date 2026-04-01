@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, Calendar, ChefHat, Compass, LogOut, Settings, Sparkles, Utensils, User } from 'lucide-react';
+import { Bookmark, Calendar, ChefHat, Compass, LogOut, Settings, Utensils, User } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../routes/paths.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -17,7 +17,6 @@ const MOBILE_NAV_ITEMS = [
   { to: ROUTES.explore, label: 'Explorar', icon: Compass },
   { to: ROUTES.plan, label: 'Plan', icon: Calendar },
   { to: ROUTES.saved, label: 'Guardados', icon: Bookmark },
-  { to: ROUTES.profile, label: 'Perfil', icon: User },
 ];
 
 function desktopNavClass({ isActive }) {
@@ -29,10 +28,10 @@ function desktopNavClass({ isActive }) {
 }
 
 function mobileNavClass({ isActive }) {
-  return `flex flex-col items-center justify-center gap-1.5 min-h-[72px] px-1.5 rounded-2xl flex-1 transition-all ${
+  return `flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-2xl flex-1 transition-all min-h-[56px] ${
     isActive
       ? 'text-[--c-primary] bg-[--c-primary-light]'
-      : 'text-slate-400 dark:text-slate-500'
+      : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
   }`;
 }
 
@@ -135,26 +134,15 @@ export default function AppLayout() {
       {/* Tips widget */}
       <TipsWidget />
 
-      {location.pathname !== ROUTES.create && (
-        <NavLink
-          to={ROUTES.create}
-          className="sm:hidden fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_18px_38px_rgba(15,23,42,0.18)] border border-white/30"
-          style={{ background: 'linear-gradient(135deg, var(--c-primary), var(--c-accent))' }}
-          aria-label="Generar receta"
-        >
-          <Sparkles size={24} />
-        </NavLink>
-      )}
-
       {/* Bottom nav mobile */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-slate-100 dark:border-gray-800 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-20 px-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/96 dark:bg-gray-900/96 backdrop-blur-md border-t border-slate-100 dark:border-gray-800 shadow-[0_-2px_16px_rgba(0,0,0,0.06)] z-20 px-3 pb-safe pt-2">
         <div className="flex items-stretch gap-1.5">
         {MOBILE_NAV_ITEMS.map(item => (
           <NavLink key={item.to} to={item.to} className={mobileNavClass}>
             {({ isActive }) => (
               <>
                 <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} style={isActive ? { color: 'var(--c-primary)' } : {}} />
-                <span className="text-[10px] font-semibold leading-none">{item.label}</span>
+                <span className="text-[10px] font-bold leading-none tracking-tight">{item.label}</span>
               </>
             )}
           </NavLink>
