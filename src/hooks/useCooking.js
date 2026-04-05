@@ -1,17 +1,13 @@
 import { useState } from 'react';
 import { useAppState } from '../context/appState.js';
+import { useRecipeCache } from './useRecipeCache.js';
 import {
   fetchGeminiContent,
   compactProfile,
   buildLocaleInstruction,
   buildAbsoluteGuardrail,
   buildSupermarketInstruction,
-  readStoredJson,
-  writeStoredJson,
 } from '../lib/gemini.js';
-
-// Isolated cache bucket — separate from generator/explore caches
-const COOKING_CACHE_KEY = 'cooking_home_cache_v1';
 
 // ── Stable key per mode + params + profile slice ─────────────────────────────
 
@@ -148,25 +144,28 @@ export function useCooking() {
   const [activeKeys, setActiveKeys] = useState(new Set());
   const [errors, setErrors] = useState({});
   const { profile, saveGeneratedRecipe } = useAppState();
+  const cache = useRecipeCache(); // TTL-based cache (1h default)
+
+  const _makeKey = (mode, params) => makeKey(mode, params, compactProfile(profile).slice(0, 80));
 
   const generate = async (mode, params) => {
-    const profileStr = compactProfile(profile);
-    const key = makeKey(mode, params, profileStr.slice(0, 80));
+    const key = _makeKey(mode, params);
 
-    // Prevent duplicate in-flight requests
+    // Deduplicate in-flight requests for the same key
     if (activeKeys.has(key)) return null;
 
-    // Check localStorage cache
-    const cache = readStoredJson(COOKING_CACHE_KEY, {});
-    if (cache[key]) {
-      setOptions(o => ({ ...o, [key]: cache[key] }));
-      return cache[key];
+    // TTL cache hit → no API call
+    const hit = cache.getCached(key);
+    if (hit) {
+      setOptions(o => ({ ...o, [key]: hit }));
+      return hit;
     }
 
     setActiveKeys(s => new Set([...s, key]));
     setErrors(e => { const n = { ...e }; delete n[key]; return n; });
 
     try {
+      const profileStr = compactProfile(profile);
       const locale = buildLocaleInstruction(profile);
       const guardrail = buildAbsoluteGuardrail(profile);
       const superStr = buildSupermarketInstruction(profile);
@@ -183,11 +182,8 @@ export function useCooking() {
       if (!rawText) throw new Error('La IA no devolvió respuesta');
 
       let parsed;
-      try {
-        parsed = JSON.parse(extractJSON(rawText));
-      } catch {
-        throw new Error('Respuesta inesperada — intenta de nuevo');
-      }
+      try { parsed = JSON.parse(extractJSON(rawText)); }
+      catch { throw new Error('Respuesta inesperada — intenta de nuevo'); }
 
       const recipes = parsed?.recipes;
       if (!Array.isArray(recipes) || recipes.length === 0) {
@@ -196,11 +192,10 @@ export function useCooking() {
 
       const normalized = recipes.slice(0, 3).map(normalizeCookingRecipe);
 
-      // Persist to localStorage
-      const updated = { ...readStoredJson(COOKING_CACHE_KEY, {}), [key]: normalized };
-      writeStoredJson(COOKING_CACHE_KEY, updated);
+      // Persist with TTL
+      cache.setCache(key, normalized);
 
-      // Save first recipe to history (fire-and-forget)
+      // Add to history (fire-and-forget)
       if (saveGeneratedRecipe) {
         normalized.forEach(r => saveGeneratedRecipe(r).catch(() => {}));
       }
@@ -215,23 +210,9 @@ export function useCooking() {
     }
   };
 
-  const getOptions = (mode, params) => {
-    const profileStr = compactProfile(profile);
-    const key = makeKey(mode, params, profileStr.slice(0, 80));
-    return options[key] ?? null;
-  };
-
-  const isLoading = (mode, params) => {
-    const profileStr = compactProfile(profile);
-    const key = makeKey(mode, params, profileStr.slice(0, 80));
-    return activeKeys.has(key);
-  };
-
-  const getError = (mode, params) => {
-    const profileStr = compactProfile(profile);
-    const key = makeKey(mode, params, profileStr.slice(0, 80));
-    return errors[key] ?? null;
-  };
+  const getOptions = (mode, params) => options[_makeKey(mode, params)] ?? null;
+  const isLoading = (mode, params) => activeKeys.has(_makeKey(mode, params));
+  const getError = (mode, params) => errors[_makeKey(mode, params)] ?? null;
 
   return { generate, getOptions, isLoading, getError };
 }

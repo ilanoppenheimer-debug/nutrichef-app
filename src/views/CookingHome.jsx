@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
-import RecipeModal from '../components/RecipeModal.jsx';
+import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import RecipeBottomSheet from '../components/RecipeBottomSheet.jsx';
 import { useCooking } from '../hooks/useCooking.js';
 
 // ── Chip selector ─────────────────────────────────────────────────────────────
@@ -35,6 +35,69 @@ function ChipGroup({ label, options, value, onChange }) {
   );
 }
 
+// ── Recommendation logic ──────────────────────────────────────────────────────
+
+/**
+ * Returns the index of the recipe the app should highlight as "recommended"
+ * based on the user's current intent (tipo) and mode.
+ *
+ * Priority order:
+ *  1. Explicit tipo signal (proteico → highest protein, liviano → lowest cal, etc.)
+ *  2. Mode-specific default (cookNow → fastest, mealPrep → balanced)
+ *  3. Fallback: recipe labelled "balanceada"
+ */
+function getRecommendedIndex(recipes, tipo, mode) {
+  if (!recipes || recipes.length === 0) return 0;
+
+  const parseNum = (str) => parseFloat(String(str ?? '0').replace(/[^\d.]/g, '')) || 0;
+
+  if (tipo === 'proteico') {
+    let max = -1, idx = 0;
+    recipes.forEach((r, i) => { const v = parseNum(r.macros?.protein); if (v > max) { max = v; idx = i; } });
+    return idx;
+  }
+
+  if (tipo === 'liviano') {
+    let min = Infinity, idx = 0;
+    recipes.forEach((r, i) => { const v = parseNum(r.macros?.calories) || Infinity; if (v < min) { min = v; idx = i; } });
+    return idx;
+  }
+
+  if (tipo === 'snack') {
+    // Prefer lowest calories
+    let min = Infinity, idx = 0;
+    recipes.forEach((r, i) => { const v = parseNum(r.macros?.calories) || Infinity; if (v < min) { min = v; idx = i; } });
+    return idx;
+  }
+
+  if (tipo === 'comida completa') {
+    // Prefer highest calories (most complete)
+    let max = -1, idx = 0;
+    recipes.forEach((r, i) => { const v = parseNum(r.macros?.calories); if (v > max) { max = v; idx = i; } });
+    return idx;
+  }
+
+  // Mode defaults
+  if (mode === 'cookNow') {
+    // Prefer fastest — by time_minutes, then by "rápida" label
+    let min = Infinity, idx = -1;
+    recipes.forEach((r, i) => { const v = r._time_minutes ?? Infinity; if (v < min) { min = v; idx = i; } });
+    if (idx !== -1) return idx;
+    const ri = recipes.findIndex(r => r._label === 'rápida');
+    return ri !== -1 ? ri : 0;
+  }
+
+  if (mode === 'mealPrep') {
+    // Prefer "balanceada" for meal prep
+    const bi = recipes.findIndex(r => r._label === 'balanceada');
+    return bi !== -1 ? bi : 0;
+  }
+
+  // Default: "balanceada" label, else index 0
+  const bi = recipes.findIndex(r => r._label === 'balanceada');
+  return bi !== -1 ? bi : 0;
+}
+
 // ── Recipe option card (shown after generation) ───────────────────────────────
 
 const LABEL_CONFIG = {
@@ -44,19 +107,32 @@ const LABEL_CONFIG = {
 };
 const FALLBACK_LABELS = ['Rápida y simple', 'Mejor nutrición', 'Alternativa creativa'];
 
-function RecipeOptionCard({ recipe, index, onSelect }) {
+function RecipeOptionCard({ recipe, index, isRecommended, onSelect }) {
   const labelCfg = LABEL_CONFIG[recipe._label] ?? { icon: '•', text: FALLBACK_LABELS[index] ?? `Opción ${index + 1}` };
 
   return (
     <button
       type="button"
       onClick={() => onSelect(recipe)}
-      className="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 hover:border-[--c-primary-border] active:scale-[0.98] transition-all"
+      className={`w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.97] ${
+        isRecommended
+          ? 'border-[--c-primary-border] bg-[--c-primary-light] scale-[1.01] shadow-sm'
+          : 'border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 hover:border-[--c-primary-border]'
+      }`}
+      style={{ transitionDuration: '100ms' }}
     >
+      {/* Label row */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-          {labelCfg.icon} {labelCfg.text}
-        </span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-[10px] font-black uppercase tracking-widest ${isRecommended ? 'text-[--c-primary-text]' : 'text-slate-400 dark:text-slate-500'}`}>
+            {labelCfg.icon} {labelCfg.text}
+          </span>
+          {isRecommended && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-2 py-0.5 rounded-full text-white leading-none" style={{ background: 'var(--c-primary)' }}>
+              <Star size={9} fill="currentColor" /> Recomendada
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           {recipe._time_minutes && (
             <span className="text-[10px] font-bold text-slate-400">⏱ {recipe._time_minutes} min</span>
@@ -66,11 +142,35 @@ function RecipeOptionCard({ recipe, index, onSelect }) {
           )}
         </div>
       </div>
-      <p className="font-black text-slate-800 dark:text-white text-sm leading-snug">{recipe.title}</p>
+
+      {/* Title */}
+      <p className={`font-black text-sm leading-snug ${isRecommended ? 'text-[--c-primary-text]' : 'text-slate-800 dark:text-white'}`}>
+        {recipe.title}
+      </p>
+
+      {/* Description */}
       {recipe.description && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{recipe.description}</p>
+        <p className={`text-xs mt-1 line-clamp-2 ${isRecommended ? 'text-[--c-primary-text] opacity-80' : 'text-slate-500 dark:text-slate-400'}`}>
+          {recipe.description}
+        </p>
       )}
-      <div className="flex items-center gap-1 mt-2" style={{ color: 'var(--c-primary)' }}>
+
+      {/* Nutrition mini-row */}
+      {recipe.macros && (
+        <div className="flex gap-3 mt-2">
+          {[
+            { label: 'Cal', val: recipe.macros.calories },
+            { label: 'Prot', val: recipe.macros.protein },
+          ].map(({ label, val }) => val && val !== '—' ? (
+            <span key={label} className={`text-[10px] font-bold ${isRecommended ? 'text-[--c-primary-text] opacity-70' : 'text-slate-400 dark:text-slate-500'}`}>
+              {label}: {val}
+            </span>
+          ) : null)}
+        </div>
+      )}
+
+      {/* CTA hint */}
+      <div className={`flex items-center gap-1 mt-2 ${isRecommended ? 'text-[--c-primary]' : ''}`} style={isRecommended ? {} : { color: 'var(--c-primary)' }}>
         <span className="text-xs font-bold">Ver receta</span>
         <ChevronRight size={13} strokeWidth={2.5} />
       </div>
@@ -80,7 +180,7 @@ function RecipeOptionCard({ recipe, index, onSelect }) {
 
 // ── Accordion card wrapper ────────────────────────────────────────────────────
 
-function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, options, onSelectOption, children }) {
+function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, options, onSelectOption, recommendedIndex, children }) {
   return (
     <div
       className={`rounded-3xl overflow-hidden bg-white dark:bg-gray-900 transition-all duration-200 ${
@@ -160,6 +260,7 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
                     key={recipe.title + i}
                     recipe={recipe}
                     index={i}
+                    isRecommended={i === recommendedIndex}
                     onSelect={onSelectOption}
                   />
                 ))}
@@ -254,6 +355,11 @@ export default function CookingHome() {
   const ingredientsOptions = getOptions('ingredients', ingredientsParams);
   const mealPrepOptions = getOptions('mealPrep', mealPrepParams);
 
+  // Recommended index per card
+  const cookNowRec = getRecommendedIndex(cookNowOptions, tipo, 'cookNow');
+  const ingredientsRec = getRecommendedIndex(ingredientsOptions, tipo, 'ingredients');
+  const mealPrepRec = getRecommendedIndex(mealPrepOptions, tipo, 'mealPrep');
+
   return (
     <div className="max-w-lg mx-auto space-y-4">
       {/* Page header */}
@@ -304,6 +410,7 @@ export default function CookingHome() {
         loading={isLoading('cookNow', cookNowParams)}
         options={cookNowOptions}
         onSelectOption={setViewingRecipe}
+        recommendedIndex={cookNowRec}
       >
         <ChipGroup label="Tiempo disponible" options={TIEMPO_OPTIONS} value={tiempo} onChange={setTiempo} />
         <ChipGroup label="Dificultad" options={DIFICULTAD_OPTIONS} value={dificultad} onChange={setDificultad} />
@@ -329,6 +436,7 @@ export default function CookingHome() {
         loading={isLoading('ingredients', ingredientsParams)}
         options={ingredientsOptions}
         onSelectOption={setViewingRecipe}
+        recommendedIndex={ingredientsRec}
       >
         <div>
           <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2.5">
@@ -363,6 +471,7 @@ export default function CookingHome() {
         loading={isLoading('mealPrep', mealPrepParams)}
         options={mealPrepOptions}
         onSelectOption={setViewingRecipe}
+        recommendedIndex={mealPrepRec}
       >
         <ChipGroup label="Días a cubrir" options={DIAS_OPTIONS} value={dias} onChange={setDias} />
         <ChipGroup label="Objetivo (opcional)" options={OBJETIVO_PREP_OPTIONS} value={objetivoPrep} onChange={setObjetivoPrep} />
@@ -374,8 +483,8 @@ export default function CookingHome() {
         )}
       </CookingCard>
 
-      {/* Recipe result — bottom sheet on mobile, centered modal on desktop */}
-      <RecipeModal
+      {/* Recipe result — bottom sheet (swipe-to-close on mobile, modal on desktop) */}
+      <RecipeBottomSheet
         recipe={viewingRecipe}
         onClose={() => setViewingRecipe(null)}
         onRecipeChange={setViewingRecipe}
