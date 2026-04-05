@@ -1,5 +1,5 @@
 import { buildAbsoluteGuardrail, buildBrandContext } from './brandDatabase.js';
-import { auth } from './firebase.js';
+import { fetchWithAuth } from './authUtils.js';
 import { buildFoodPreferencePromptBlock, getFoodPreferenceCacheFragment, getFoodPreferenceSummaryLines, withFoodPreferences } from './foodPreferences.js';
 import { normalizeRecipePayload } from './ingredientIntelligence.js';
 export { buildAbsoluteGuardrail } from './brandDatabase.js';
@@ -532,13 +532,12 @@ En "seguridad" escribe una frase corta: "Apto Vegano", "Kosher verificado", "Sin
 export async function fetchGeminiContent({ kind, payload }) {
   const cooldownUntil = getGeminiCooldownUntil();
   if (cooldownUntil > Date.now()) throw new Error(getCooldownMessage(cooldownUntil));
-  const user = auth.currentUser;
-  if (!user) throw new Error('Debes iniciar sesión');
-  const token = await user.getIdToken(true);
-  const response = await fetch(GEMINI_API_ENDPOINT, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ kind, payload })
+
+  const response = await fetchWithAuth(GEMINI_API_ENDPOINT, {
+    method: 'POST',
+    body: JSON.stringify({ kind, payload }),
   });
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = data?.error || 'Error con Gemini';
