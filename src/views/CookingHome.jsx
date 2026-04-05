@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import RecipeBottomSheet from '../components/RecipeBottomSheet.jsx';
+import { MealPrepPlanCard, MealPrepSheet } from '../components/MealPrepPlanCard.jsx';
 import { useCooking } from '../hooks/useCooking.js';
+import { useMealPrep } from '../hooks/useMealPrep.js';
 
 // ── Chip selector ─────────────────────────────────────────────────────────────
 
@@ -180,7 +182,7 @@ function RecipeOptionCard({ recipe, index, isRecommended, onSelect }) {
 
 // ── Accordion card wrapper ────────────────────────────────────────────────────
 
-function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, options, onSelectOption, recommendedIndex, children }) {
+function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, options, onSelectOption, recommendedIndex, planOptions, onSelectPlan, planRecommendedIndex, children }) {
   return (
     <div
       className={`rounded-3xl overflow-hidden bg-white dark:bg-gray-900 transition-all duration-200 ${
@@ -249,7 +251,7 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
               }
             </button>
 
-            {/* 3 option cards (shown after generation) */}
+            {/* Recipe option cards */}
             {options && options.length > 0 && (
               <div className="space-y-2">
                 <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -262,6 +264,23 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
                     index={i}
                     isRecommended={i === recommendedIndex}
                     onSelect={onSelectOption}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Meal prep plan cards */}
+            {planOptions && planOptions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Elige un plan
+                </p>
+                {planOptions.map((plan, i) => (
+                  <MealPrepPlanCard
+                    key={plan.title + i}
+                    plan={plan}
+                    isRecommended={i === planRecommendedIndex}
+                    onSelect={onSelectPlan}
                   />
                 ))}
               </div>
@@ -307,6 +326,12 @@ const OBJETIVO_PREP_OPTIONS = [
   { value: 'equilibrada y variada', label: '⚖️ Equilibrada' },
 ];
 
+const TIEMPO_PREP_OPTIONS = [
+  { value: 'flexible', label: '🕐 Flexible' },
+  { value: '1 hora o menos', label: '⏱ 1 hora' },
+  { value: '30 minutos', label: '⚡ 30 min' },
+];
+
 const TIPO_OPTIONS = [
   { value: null, label: '✨ Cualquiera', optional: true },
   { value: 'proteico', label: '💪 Proteico' },
@@ -316,11 +341,34 @@ const TIPO_OPTIONS = [
   { value: 'snack', label: '🍎 Snack' },
 ];
 
+// ── Plan recommendation logic ─────────────────────────────────────────────────
+
+function getRecommendedPlanIndex(plans, tipo) {
+  if (!plans || plans.length === 0) return 0;
+
+  if (tipo === 'proteico') {
+    let max = -1, idx = 0;
+    plans.forEach((p, i) => { const v = p.nutrition_summary?.daily_protein ?? 0; if (v > max) { max = v; idx = i; } });
+    return idx;
+  }
+
+  if (tipo === 'liviano') {
+    let min = Infinity, idx = 0;
+    plans.forEach((p, i) => { const v = p.nutrition_summary?.daily_calories ?? Infinity; if (v < min) { min = v; idx = i; } });
+    return idx;
+  }
+
+  // Default: plan labelled "balanceado", else 0
+  const bi = plans.findIndex(p => p.label === 'balanceado');
+  return bi !== -1 ? bi : 0;
+}
+
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export default function CookingHome() {
   const [activeCard, setActiveCard] = useState('cookNow');
   const [viewingRecipe, setViewingRecipe] = useState(null);
+  const [viewingPlan, setViewingPlan] = useState(null);
 
   // Global intention — shared across all 3 cards
   const [tipo, setTipo] = useState(null);
@@ -336,29 +384,31 @@ export default function CookingHome() {
   // mealPrep params
   const [dias, setDias] = useState('4');
   const [objetivoPrep, setObjetivoPrep] = useState(null);
+  const [tiempoDisponible, setTiempoDisponible] = useState('flexible');
 
   const { generate, getOptions, isLoading, getError } = useCooking();
+  const mealPrep = useMealPrep();
 
   // Current params objects — tipo is included in all so cache keys reflect it
   const cookNowParams = { tiempo, dificultad, objetivo: objetivoCook, tipo };
   const ingredientsParams = { ingredientes: ingredientes.trim(), tipo };
-  const mealPrepParams = { dias, objetivo: objetivoPrep, tipo };
+  const mealPrepParams = { dias, objetivo: objetivoPrep, tiempoDisponible };
 
   const toggle = (id) => setActiveCard(prev => (prev === id ? null : id));
 
   const handleCookNow = () => generate('cookNow', cookNowParams);
   const handleIngredients = () => { if (ingredientes.trim()) generate('ingredients', ingredientsParams); };
-  const handleMealPrep = () => generate('mealPrep', mealPrepParams);
+  const handleMealPrep = () => mealPrep.generate(mealPrepParams);
 
   // Cached option arrays for current params
   const cookNowOptions = getOptions('cookNow', cookNowParams);
   const ingredientsOptions = getOptions('ingredients', ingredientsParams);
-  const mealPrepOptions = getOptions('mealPrep', mealPrepParams);
+  const mealPrepPlans = mealPrep.getPlans(mealPrepParams);
 
   // Recommended index per card
   const cookNowRec = getRecommendedIndex(cookNowOptions, tipo, 'cookNow');
   const ingredientsRec = getRecommendedIndex(ingredientsOptions, tipo, 'ingredients');
-  const mealPrepRec = getRecommendedIndex(mealPrepOptions, tipo, 'mealPrep');
+  const mealPrepRec = getRecommendedPlanIndex(mealPrepPlans, tipo);
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
@@ -463,22 +513,23 @@ export default function CookingHome() {
         icon={Package}
         title="Meal prep"
         subtitle="Cocina una vez, come varios días"
-        badge={mealPrepOptions ? `${mealPrepOptions.length} opciones` : null}
+        badge={mealPrepPlans ? `${mealPrepPlans.length} planes` : null}
         isOpen={activeCard === 'mealPrep'}
         onToggle={() => toggle('mealPrep')}
-        ctaLabel={mealPrepOptions ? 'Generar nuevas opciones' : 'Planificar meal prep'}
+        ctaLabel={mealPrepPlans ? 'Generar nuevos planes' : 'Planificar meal prep'}
         onGenerate={handleMealPrep}
-        loading={isLoading('mealPrep', mealPrepParams)}
-        options={mealPrepOptions}
-        onSelectOption={setViewingRecipe}
-        recommendedIndex={mealPrepRec}
+        loading={mealPrep.isLoading(mealPrepParams)}
+        planOptions={mealPrepPlans}
+        onSelectPlan={setViewingPlan}
+        planRecommendedIndex={mealPrepRec}
       >
         <ChipGroup label="Días a cubrir" options={DIAS_OPTIONS} value={dias} onChange={setDias} />
+        <ChipGroup label="Tiempo para cocinar" options={TIEMPO_PREP_OPTIONS} value={tiempoDisponible} onChange={setTiempoDisponible} />
         <ChipGroup label="Objetivo (opcional)" options={OBJETIVO_PREP_OPTIONS} value={objetivoPrep} onChange={setObjetivoPrep} />
 
-        {getError('mealPrep', mealPrepParams) && (
+        {mealPrep.getError(mealPrepParams) && (
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">
-            {getError('mealPrep', mealPrepParams)}
+            {mealPrep.getError(mealPrepParams)}
           </p>
         )}
       </CookingCard>
@@ -488,6 +539,12 @@ export default function CookingHome() {
         recipe={viewingRecipe}
         onClose={() => setViewingRecipe(null)}
         onRecipeChange={setViewingRecipe}
+      />
+
+      {/* Meal prep plan detail — bottom sheet */}
+      <MealPrepSheet
+        plan={viewingPlan}
+        onClose={() => setViewingPlan(null)}
       />
     </div>
   );
