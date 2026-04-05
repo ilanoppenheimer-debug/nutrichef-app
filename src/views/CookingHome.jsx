@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Flame, Package, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
 import RecipeModal from '../components/RecipeModal.jsx';
 import { useCooking } from '../hooks/useCooking.js';
 
@@ -35,12 +35,48 @@ function ChipGroup({ label, options, value, onChange }) {
   );
 }
 
-// ── Accordion card ────────────────────────────────────────────────────────────
+// ── Recipe option card (shown after generation) ───────────────────────────────
 
-function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, children }) {
+const OPTION_LABELS = ['Rápida y simple', 'Mejor nutrición', 'Alternativa creativa'];
+
+function RecipeOptionCard({ recipe, index, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(recipe)}
+      className="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 hover:border-[--c-primary-border] active:scale-[0.98] transition-all group"
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+          {OPTION_LABELS[index] ?? `Opción ${index + 1}`}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {recipe._time_minutes && (
+            <span className="text-[10px] font-bold text-slate-400">⏱ {recipe._time_minutes} min</span>
+          )}
+          {recipe._difficulty && (
+            <span className="text-[10px] font-bold text-slate-400 capitalize">· {recipe._difficulty}</span>
+          )}
+        </div>
+      </div>
+      <p className="font-black text-slate-800 dark:text-white text-sm leading-snug">{recipe.title}</p>
+      {recipe.description && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{recipe.description}</p>
+      )}
+      <div className="flex items-center gap-1 mt-2" style={{ color: 'var(--c-primary)' }}>
+        <span className="text-xs font-bold">Ver receta</span>
+        <ChevronRight size={13} strokeWidth={2.5} />
+      </div>
+    </button>
+  );
+}
+
+// ── Accordion card wrapper ────────────────────────────────────────────────────
+
+function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, options, onSelectOption, children }) {
   return (
     <div
-      className={`rounded-3xl overflow-hidden transition-all duration-200 bg-white dark:bg-gray-900 ${
+      className={`rounded-3xl overflow-hidden bg-white dark:bg-gray-900 transition-all duration-200 ${
         isOpen
           ? 'shadow-lg border-2 border-[--c-primary-border]'
           : 'border border-slate-100 dark:border-gray-800'
@@ -92,6 +128,7 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
           <div className="px-5 pb-5 pt-1 space-y-4">
             {children}
 
+            {/* CTA */}
             <button
               type="button"
               onClick={onGenerate}
@@ -100,10 +137,27 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
               style={{ background: 'var(--c-primary)' }}
             >
               {loading
-                ? <><RefreshCw size={16} className="animate-spin" /> Generando receta...</>
+                ? <><RefreshCw size={16} className="animate-spin" /> Generando opciones...</>
                 : <><Sparkles size={16} /> {ctaLabel}</>
               }
             </button>
+
+            {/* 3 option cards (shown after generation) */}
+            {options && options.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Elige una opción
+                </p>
+                {options.map((recipe, i) => (
+                  <RecipeOptionCard
+                    key={recipe.title + i}
+                    recipe={recipe}
+                    index={i}
+                    onSelect={onSelectOption}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -148,55 +202,38 @@ const OBJETIVO_PREP_OPTIONS = [
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export default function CookingHome() {
-  // Which card is open (null = all closed)
   const [activeCard, setActiveCard] = useState('cookNow');
-
-  // Current recipe shown in the modal
   const [viewingRecipe, setViewingRecipe] = useState(null);
 
-  // ── cookNow params ──
+  // cookNow params
   const [tiempo, setTiempo] = useState('rápido (menos de 20 min)');
   const [dificultad, setDificultad] = useState('fácil, paso a paso simple');
   const [objetivoCook, setObjetivoCook] = useState(null);
 
-  // ── ingredients params ──
+  // ingredients params
   const [ingredientes, setIngredientes] = useState('');
 
-  // ── mealPrep params ──
+  // mealPrep params
   const [dias, setDias] = useState('4');
   const [objetivoPrep, setObjetivoPrep] = useState(null);
 
-  const { generate, getResult, isLoading, getError } = useCooking();
+  const { generate, getOptions, isLoading, getError } = useCooking();
 
-  // Current params objects (memoised inline — cheap enough for this screen)
+  // Current params objects
   const cookNowParams = { tiempo, dificultad, objetivo: objetivoCook };
   const ingredientsParams = { ingredientes: ingredientes.trim() };
   const mealPrepParams = { dias, objetivo: objetivoPrep };
 
   const toggle = (id) => setActiveCard(prev => (prev === id ? null : id));
 
-  // ── handlers ──
+  const handleCookNow = () => generate('cookNow', cookNowParams);
+  const handleIngredients = () => { if (ingredientes.trim()) generate('ingredients', ingredientsParams); };
+  const handleMealPrep = () => generate('mealPrep', mealPrepParams);
 
-  const handleCookNow = async () => {
-    const result = await generate('cookNow', cookNowParams);
-    if (result) setViewingRecipe(result);
-  };
-
-  const handleIngredients = async () => {
-    if (!ingredientes.trim()) return;
-    const result = await generate('ingredients', ingredientsParams);
-    if (result) setViewingRecipe(result);
-  };
-
-  const handleMealPrep = async () => {
-    const result = await generate('mealPrep', mealPrepParams);
-    if (result) setViewingRecipe(result);
-  };
-
-  // Cached results for current param combos
-  const cookNowResult = getResult('cookNow', cookNowParams);
-  const ingredientsResult = getResult('ingredients', ingredientsParams);
-  const mealPrepResult = getResult('mealPrep', mealPrepParams);
+  // Cached option arrays for current params
+  const cookNowOptions = getOptions('cookNow', cookNowParams);
+  const ingredientsOptions = getOptions('ingredients', ingredientsParams);
+  const mealPrepOptions = getOptions('mealPrep', mealPrepParams);
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
@@ -204,7 +241,7 @@ export default function CookingHome() {
       <div className="pt-1 pb-1">
         <h1 className="text-2xl font-black text-slate-800 dark:text-white">¿Qué cocinamos?</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Elige cómo quieres empezar.
+          Elige cómo quieres empezar — te doy 3 opciones.
         </p>
       </div>
 
@@ -213,12 +250,14 @@ export default function CookingHome() {
         icon={Flame}
         title="Cocinar ahora"
         subtitle="Te sugiero qué preparar según tu tiempo"
-        badge={cookNowResult ? '✓' : null}
+        badge={cookNowOptions ? `${cookNowOptions.length} opciones` : null}
         isOpen={activeCard === 'cookNow'}
         onToggle={() => toggle('cookNow')}
-        ctaLabel="Sugerir receta"
+        ctaLabel={cookNowOptions ? 'Generar nuevas opciones' : 'Sugerir receta'}
         onGenerate={handleCookNow}
         loading={isLoading('cookNow', cookNowParams)}
+        options={cookNowOptions}
+        onSelectOption={setViewingRecipe}
       >
         <ChipGroup label="Tiempo disponible" options={TIEMPO_OPTIONS} value={tiempo} onChange={setTiempo} />
         <ChipGroup label="Dificultad" options={DIFICULTAD_OPTIONS} value={dificultad} onChange={setDificultad} />
@@ -229,16 +268,6 @@ export default function CookingHome() {
             {getError('cookNow', cookNowParams)}
           </p>
         )}
-        {cookNowResult && (
-          <button
-            type="button"
-            onClick={() => setViewingRecipe(cookNowResult)}
-            className="w-full py-3 rounded-2xl font-bold text-sm border-2 transition-colors active:opacity-80 truncate px-4"
-            style={{ borderColor: 'var(--c-primary-border)', color: 'var(--c-primary)' }}
-          >
-            Ver &ldquo;{cookNowResult.title}&rdquo;
-          </button>
-        )}
       </CookingCard>
 
       {/* ── Card 2: Tengo ingredientes ── */}
@@ -246,12 +275,14 @@ export default function CookingHome() {
         icon={ShoppingBag}
         title="Tengo ingredientes"
         subtitle="Dime qué tienes y te digo qué preparar"
-        badge={ingredientsResult ? '✓' : null}
+        badge={ingredientsOptions ? `${ingredientsOptions.length} opciones` : null}
         isOpen={activeCard === 'ingredients'}
         onToggle={() => toggle('ingredients')}
-        ctaLabel="¿Qué puedo cocinar?"
+        ctaLabel={ingredientsOptions ? 'Generar nuevas opciones' : '¿Qué puedo cocinar?'}
         onGenerate={handleIngredients}
         loading={isLoading('ingredients', ingredientsParams)}
+        options={ingredientsOptions}
+        onSelectOption={setViewingRecipe}
       >
         <div>
           <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2.5">
@@ -271,16 +302,6 @@ export default function CookingHome() {
             {getError('ingredients', ingredientsParams)}
           </p>
         )}
-        {ingredientsResult && (
-          <button
-            type="button"
-            onClick={() => setViewingRecipe(ingredientsResult)}
-            className="w-full py-3 rounded-2xl font-bold text-sm border-2 transition-colors active:opacity-80 truncate px-4"
-            style={{ borderColor: 'var(--c-primary-border)', color: 'var(--c-primary)' }}
-          >
-            Ver &ldquo;{ingredientsResult.title}&rdquo;
-          </button>
-        )}
       </CookingCard>
 
       {/* ── Card 3: Meal prep ── */}
@@ -288,12 +309,14 @@ export default function CookingHome() {
         icon={Package}
         title="Meal prep"
         subtitle="Cocina una vez, come varios días"
-        badge={mealPrepResult ? '✓' : null}
+        badge={mealPrepOptions ? `${mealPrepOptions.length} opciones` : null}
         isOpen={activeCard === 'mealPrep'}
         onToggle={() => toggle('mealPrep')}
-        ctaLabel="Planificar meal prep"
+        ctaLabel={mealPrepOptions ? 'Generar nuevas opciones' : 'Planificar meal prep'}
         onGenerate={handleMealPrep}
         loading={isLoading('mealPrep', mealPrepParams)}
+        options={mealPrepOptions}
+        onSelectOption={setViewingRecipe}
       >
         <ChipGroup label="Días a cubrir" options={DIAS_OPTIONS} value={dias} onChange={setDias} />
         <ChipGroup label="Objetivo (opcional)" options={OBJETIVO_PREP_OPTIONS} value={objetivoPrep} onChange={setObjetivoPrep} />
@@ -302,16 +325,6 @@ export default function CookingHome() {
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">
             {getError('mealPrep', mealPrepParams)}
           </p>
-        )}
-        {mealPrepResult && (
-          <button
-            type="button"
-            onClick={() => setViewingRecipe(mealPrepResult)}
-            className="w-full py-3 rounded-2xl font-bold text-sm border-2 transition-colors active:opacity-80 truncate px-4"
-            style={{ borderColor: 'var(--c-primary-border)', color: 'var(--c-primary)' }}
-          >
-            Ver &ldquo;{mealPrepResult.title}&rdquo;
-          </button>
         )}
       </CookingCard>
 
