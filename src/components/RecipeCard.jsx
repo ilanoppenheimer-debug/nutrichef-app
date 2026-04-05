@@ -1,37 +1,32 @@
 import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
-  Bookmark,
   BookOpen,
   CheckCircle2,
-  ChefHat,
   ChevronDown,
-  Clock,
   Heart,
   Info,
   MessageSquare,
   Minus,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Send,
   Settings2,
-  Share2,
   ShieldCheck,
   ShoppingBag,
   Star,
   ThumbsDown,
   ThumbsUp,
-  Users,
   X,
   Zap,
 } from 'lucide-react';
 import { useAppState } from '../context/appState.js';
-import { refineRecipe, extractDislikedIngredient, formatCurrencyByCountry } from '../lib/gemini.js';
+import { refineRecipe, extractDislikedIngredient } from '../lib/gemini.js';
 import { BRAND_LABELS, getRelevantBrandCategories, SAFE_BRANDS, normalizeAndFilterBrandsForProfile } from '../lib/brandDatabase.js';
 import { annotateRecipeIngredients, normalizeIngredientEntry } from '../lib/ingredientIntelligence.js';
 import { clampServings, parseServingsCount, scaleNutritionLabel, scaleQuantityText } from '../lib/recipeScaling.js';
-import { estimateRecipeCost } from '../lib/pricing.js';
+import RecipeHeaderCompact from './RecipeHeaderCompact.jsx';
+import StickyCTA from './StickyCTA.jsx';
 
 function formatSafetyBadge(reason) {
   if (!reason) return 'Marca verificada';
@@ -407,11 +402,8 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const [feedbackReason, setFeedbackReason] = useState('');
   const [refinedBadge, setRefinedBadge] = useState(false);
   const [selectedServings, setSelectedServings] = useState(parseServingsCount(initialRecipe?.servings || 1));
-  const [shareFeedback, setShareFeedback] = useState('');
   const [openSections, setOpenSections] = useState({ ingredients: true, brands: false, steps: false, tips: false });
   const [showPer100g, setShowPer100g] = useState(false);
-  const [showSecondaryActions, setShowSecondaryActions] = useState(false);
-  const [heroPreset, setHeroPreset] = useState('');
 
   useEffect(() => {
     setSelectedServings(parseServingsCount(recipe?.servings || 1));
@@ -440,11 +432,7 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
       fiber: scaleNutritionLabel(recipe.macros.fiber, servingsScale),
     } : recipe.macros,
   };
-  const estimatedCost = estimateRecipeCost(displayRecipe.ingredients, profile?.country || 'Chile');
-  const estimatedCostLabel = estimatedCost > 0 ? `≈ ${formatCurrencyByCountry(estimatedCost, profile?.country || 'Chile')}` : 'Variable';
   const verifiedBrands = profile ? getVerifiedBrands(recipe, profile) : [];
-  const heroImage = recipe.image || recipe.imageUrl || recipe.photo || recipe.coverImage || recipe.thumbnail || null;
-  const calories = parseFloat(String(displayRecipe.macros?.calories || '0').replace(/[^\d.]/g, '')) || 0;
   const adjustedIngredientsCount = ingredientInsights.ingredients.filter(item => item.isDislike && item.substitute).length;
 
   const totalWeightG = parseTotalWeightGrams(displayRecipe.ingredients);
@@ -501,26 +489,6 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
     if (onRecipeChange) onRecipeChange(refinedRecipe);
   };
 
-  const handleShare = async () => {
-    const shareText = `${recipe.title}\n${recipe.description || 'Receta generada con NutriChef IA'}\n${window?.location?.href || ''}`.trim();
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: recipe.title, text: recipe.description || `Receta para ${selectedServings} porciones`, url: window.location.href });
-        setShareFeedback('Compartida');
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareText);
-        setShareFeedback('Copiada');
-      } else {
-        setShareFeedback('Sin soporte para compartir');
-      }
-    } catch {
-      setShareFeedback('No se pudo compartir');
-    } finally {
-      setTimeout(() => setShareFeedback(''), 2200);
-    }
-  };
-
   const askChef = async () => {
     if (!chefQuestion.trim()) return;
     setAsking(true);
@@ -552,89 +520,24 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
 
   return (
     <div className="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 dark:border-gray-800 dark:bg-gray-900">
-      <div className="relative overflow-hidden rounded-t-3xl">
-        <div className="relative" style={{ height: 'clamp(180px, 44vw, 260px)' }}>
-          {heroImage ? (
-            <img src={heroImage} alt={recipe.title} className="h-full w-full object-cover" />
-          ) : (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.22),_transparent_30%),linear-gradient(135deg,var(--c-primary),var(--c-accent))]">
-              <div className="absolute -right-10 top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-              <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-black/10 blur-2xl" />
-            </div>
-          )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/45 to-transparent" />
+      {/* ── Header compacto: título + métricas ── */}
+      <RecipeHeaderCompact
+        title={recipe.title}
+        macros={displayRecipe.macros}
+        prepTime={recipe.prepTime}
+        isRefined={refinedBadge || !!recipe._refinedFrom}
+      />
 
-          {(refinedBadge || recipe._refinedFrom) && (
-            <div className="absolute left-4 top-4 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">
-              <span className="flex items-center gap-1.5"><Settings2 size={11} /> Ajustada con IA</span>
-            </div>
-          )}
-
-          <div className="absolute right-3 top-3 flex gap-1.5">
-            {showSecondaryActions && (
-              <>
-                <button onClick={toggleInterested} className={`flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white shadow-md backdrop-blur-sm transition-all animate-in fade-in zoom-in-75 ${isInterested ? 'bg-blue-500' : 'bg-slate-950/30'}`} aria-label="Guardar para revisar después">
-                  <Bookmark size={17} fill={isInterested ? 'currentColor' : 'none'} />
-                </button>
-                <button onClick={handleShare} className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-slate-950/30 text-white shadow-md backdrop-blur-sm transition-all animate-in fade-in zoom-in-75" aria-label="Compartir receta">
-                  <Share2 size={17} />
-                </button>
-              </>
-            )}
-            <button onClick={() => setShowSecondaryActions(v => !v)} className={`flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white shadow-md backdrop-blur-sm transition-all ${showSecondaryActions ? 'bg-white/25' : 'bg-slate-950/30'}`} aria-label="Más acciones">
-              <MoreHorizontal size={17} />
-            </button>
-          </div>
-
-          <div className="absolute inset-x-0 bottom-0 px-4 py-4 text-white sm:px-6 sm:py-5">
-            <div className="mb-1.5 flex items-center gap-2">
-              <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">{recipe.cuisine || 'Receta IA'}</span>
-              {shareFeedback && <span className="rounded-full bg-emerald-500/90 px-2.5 py-0.5 text-[10px] font-bold">{shareFeedback}</span>}
-            </div>
-            <h2 className="text-base font-black tracking-tight sm:text-xl leading-tight line-clamp-2">{recipe.title}</h2>
-
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              <span className="flex items-center gap-1 rounded-lg bg-black/25 px-2.5 py-1 text-xs font-medium"><Clock size={12} /> {recipe.prepTime || '?'}</span>
-              <span className="flex items-center gap-1 rounded-lg bg-black/25 px-2.5 py-1 text-xs font-medium"><ChefHat size={12} /> {recipe.cookTime || '?'}</span>
-              {calories > 0 && <span className="flex items-center gap-1 rounded-lg bg-black/25 px-2.5 py-1 text-xs font-medium"><Zap size={12} /> {displayRecipe.macros.calories}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* ── Macro snapshot + cost (always visible, scannable in 2s) ── */}
-      {recipe.macros && (
-        <div className="flex items-center gap-4 overflow-x-auto no-scrollbar px-5 pt-4 pb-2">
-          {[
-            { label: 'Cal',    value: displayRecipe.macros?.calories, color: 'text-orange-500 dark:text-orange-400' },
-            { label: 'Prot',   value: displayRecipe.macros?.protein,  color: 'text-blue-600 dark:text-blue-400'   },
-            { label: 'Carbs',  value: displayRecipe.macros?.carbs,    color: 'text-amber-500 dark:text-amber-400' },
-            { label: 'Grasas', value: displayRecipe.macros?.fat,      color: 'text-rose-500 dark:text-rose-400'   },
-            { label: 'Fibra',  value: displayRecipe.macros?.fiber,    color: 'text-green-600 dark:text-green-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="shrink-0 text-center">
-              <p className={`text-sm font-black tabular-nums leading-none ${color}`}>{value || '—'}</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
-            </div>
-          ))}
-          <div className="mx-0.5 h-7 w-px shrink-0 self-center bg-slate-200 dark:bg-gray-700" />
-          <div className="shrink-0 text-center">
-            <p className="text-sm font-black tabular-nums leading-none text-emerald-600 dark:text-emerald-400">{estimatedCostLabel}</p>
-            <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">Costo</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Scrollable content (progressive disclosure) ─────────── */}
-      <div className="space-y-2.5 px-4 pt-3 pb-32 sm:px-5 md:px-6 sm:pb-8">
+      {/* ── Contenido con scroll (progressive disclosure) ─────────── */}
+      <div className="space-y-2.5 px-4 pt-2 pb-32 sm:px-5 md:px-6 sm:pb-8">
 
         {/* AdjustPanel — revealed when toggled from sticky CTA */}
         {showAdjust && (
           <AdjustPanel
             recipe={recipe}
             onRefined={handleRefined}
-            onClose={() => { setShowAdjust(false); setHeroPreset(''); }}
-            initialInstruction={heroPreset}
+            onClose={() => setShowAdjust(false)}
           />
         )}
 
@@ -852,59 +755,14 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
 
       </div>
 
-      {/* ── Sticky bottom CTA ─────────────────────────────────────
-          z-10 (below fixed nav at z-20) — pb-16 lifts buttons above nav
-          Microinteractions: active:scale on all buttons
-      ──────────────────────────────────────────────────────────── */}
-      <div className="sticky bottom-0 z-10 -mx-px overflow-hidden rounded-b-3xl">
-        <div className="flex items-center gap-2 border-t border-slate-100 bg-white/96 px-4 pt-3 pb-16 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/96 sm:pb-4 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
-
-          {/* ❤ Favorita — icon only, square */}
-          <button
-            onClick={toggleFavorite}
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 active:scale-90 ${
-              isFavorite
-                ? 'bg-red-500 border-red-500 text-white'
-                : 'bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-300 hover:border-red-200 dark:hover:border-red-800'
-            }`}
-            aria-label={isFavorite ? 'Quitar de favoritas' : 'Guardar como favorita'}
-          >
-            <Heart
-              size={19}
-              fill={isFavorite ? 'currentColor' : 'none'}
-              className="transition-all duration-200"
-            />
-          </button>
-
-          {/* ★ Agregar al plan — PRIMARY, stretches to fill */}
-          <button
-            onClick={toggleSaveForPlan}
-            className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-all duration-200 active:scale-[0.97] ${
-              isSavedForPlan
-                ? 'bg-amber-400 text-amber-900'
-                : 'text-white'
-            }`}
-            style={!isSavedForPlan ? { background: 'var(--c-primary)' } : {}}
-          >
-            <Star size={18} fill={isSavedForPlan ? 'currentColor' : 'none'} className="transition-all duration-200" />
-            {isSavedForPlan ? 'En tu plan ✓' : 'Agregar al plan'}
-          </button>
-
-          {/* ⚙ Ajustar — icon only, square */}
-          <button
-            onClick={() => setShowAdjust(v => !v)}
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 active:scale-90 ${
-              showAdjust
-                ? 'bg-slate-900 dark:bg-white border-slate-900 text-white dark:text-slate-900'
-                : 'bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-300'
-            }`}
-            aria-label="Ajustar con IA"
-          >
-            <Settings2 size={19} />
-          </button>
-
-        </div>
-      </div>
+      <StickyCTA
+        isSavedForPlan={isSavedForPlan}
+        isFavorite={isFavorite}
+        showAdjust={showAdjust}
+        onTogglePlan={toggleSaveForPlan}
+        onToggleFavorite={toggleFavorite}
+        onToggleAdjust={() => setShowAdjust(v => !v)}
+      />
     </div>
   );
 }
