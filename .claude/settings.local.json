@@ -5,7 +5,8 @@
       "Bash(grep -r \"type.*Recipe\\\\|interface.*Recipe\\\\|interface.*Profile\\\\|interface.*Meal\" /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src --include=*.ts --include=*.tsx --include=*.jsx --include=*.js)",
       "Bash(grep -n \"interface\\\\|type\\\\|class\" /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src/views/*.jsx)",
       "Bash(ls -1 /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src/views/*.jsx)",
-      "Bash(xargs -I {} basename {})"
+      "Bash(xargs -I {} basename {})",
+      "Bash(npx vite:*)"
     ]
   }
 }

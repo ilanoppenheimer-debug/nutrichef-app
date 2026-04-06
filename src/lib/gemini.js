@@ -507,25 +507,23 @@ export const SHOPPING_LIST_RESPONSE_SCHEMA = {
   required: ['currency', 'estimatedTotalMin', 'estimatedTotalMax', 'estimatedSavingsMin', 'estimatedSavingsMax', 'categories'],
 };
 
-// ── Builder de prompt de receta con marcas ───────────────────────────────────
+// ── Builder de prompt de receta ──────────────────────────────────────────────
 export function buildRecipePrompt({ name, description, ingredients, profileStr, profile }) {
-  const brandCtx = buildBrandContext(profile);
-  const needsBrands = brandCtx.length > 0;
   const guardrail = buildAbsoluteGuardrail(profile);
   const foodPreferenceInstruction = buildFoodPreferencePromptBlock(profile);
-  return `Receta completa para "${name}".${description ? ` Contexto: ${description}.` : ''}${ingredients ? ` Ingredientes: ${ingredients}.` : ''}
+  return `Actúa como un asistente que toma decisiones por el usuario. Genera UNA receta completa para "${name}".${description ? ` Contexto: ${description}.` : ''}${ingredients ? ` Ingredientes: ${ingredients}.` : ''}
 Perfil: ${profileStr}.
-${foodPreferenceInstruction ? `${foodPreferenceInstruction}\n` : ''}${guardrail}${brandCtx}
-REGLAS ESTRICTAS DE FORMATO — INCUMPLIRLAS INVALIDA LA RESPUESTA:
-1. PROHIBIDO generar párrafos introductorios o explicaciones de por qué la receta se adapta al usuario. La salida es directa.
-2. El campo "description" tiene máximo 15 palabras. Sin justificaciones de dieta. Ejemplo: "Pollo al limón con hierbas, listo en 20 minutos".
-3. Cada ingrediente DEBE desglosarse en: "cantidad" (número), "unidad" (g/taza/cdta/unidad/etc.), "nombre" (solo el nombre del ingrediente, sin certificaciones ni texto extra).
-4. NUNCA incluyas "(apto Kosher)", "(certificado Halal)" ni ninguna justificación dentro del campo "nombre" del ingrediente.
-5. Si el ingrediente es seguro para la dieta del usuario, marca "es_seguro_kosher":true / "es_seguro_halal":true según corresponda. Si conoces una marca compatible, ponla en "marca_sugerida".
-6. Los pasos tienen máximo 12 palabras cada uno.
-7. Marca ingredientes problemáticos con "isDislike":true o "allergyAlert":true y añade "suggestedSubstitute".
-${needsBrands ? 'Incluye marcas relevantes en "marcas_sugeridas" según la dieta del usuario.' : 'Devuelve "marcas_sugeridas" como array vacío.'}
-En "seguridad" escribe una frase corta: "Apto Vegano", "Kosher verificado", "Sin gluten aplicado". Máximo 5 palabras.`;
+${foodPreferenceInstruction ? `${foodPreferenceInstruction}\n` : ''}${guardrail}
+REGLAS:
+- NO entregues múltiples opciones ni alternativas innecesarias.
+- NO incluyas productos, marcas ni recomendaciones comerciales.
+- Si algún ingrediente no cumple restricciones, reemplázalo automáticamente sin mencionarlo.
+- "description" máximo 15 palabras. Sin justificaciones de dieta.
+- Cada ingrediente: "cantidad", "unidad", "nombre" (sin certificaciones ni texto extra).
+- Máximo 5 pasos, lenguaje simple.
+- Marca ingredientes problemáticos con "isDislike":true o "allergyAlert":true y añade "suggestedSubstitute".
+- Devuelve "marcas_sugeridas" como array vacío.
+- En "seguridad" escribe una frase corta de máximo 5 palabras.`;
 }
 
 // ── Fetch backend ─────────────────────────────────────────────────────────────

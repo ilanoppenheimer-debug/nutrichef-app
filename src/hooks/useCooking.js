@@ -23,7 +23,7 @@ function parseAmount(amount = '') {
   return { cantidad: '', unidad: amount };
 }
 
-// ── Map the new 3-recipe schema to the format RecipeCard understands ──────────
+// ── Map Gemini recipe to the format RecipeCard understands ───────────────────
 
 function normalizeCookingRecipe(r) {
   return {
@@ -53,10 +53,8 @@ function normalizeCookingRecipe(r) {
       fat: r.nutrition?.fat != null ? `${r.nutrition.fat}g` : '—',
       fiber: '—',
     },
-    tips: `Dificultad: ${r.difficulty || 'fácil'}`,
+    tips: r.tip || `Dificultad: ${r.difficulty || 'fácil'}`,
     marcas_sugeridas: [],
-    // Extra fields used by RecipeOptionCard
-    _label: r.label || null,       // "rápida" | "balanceada" | "alternativa"
     _difficulty: r.difficulty || 'fácil',
     _time_minutes: r.time_minutes ?? null,
     _tags: r.tags || [],
@@ -75,72 +73,71 @@ function extractJSON(text) {
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
 function buildPrompt(mode, params, { profileStr, locale, guardrail, superStr }) {
-  const preferences = [profileStr, guardrail, superStr].filter(Boolean).join('\n');
-  const tipoLine = params.tipo ? `\nTipo de comida deseada (intención): ${params.tipo}` : '';
+  const restrictions = [guardrail, superStr].filter(Boolean).join('\n') || 'Ninguna';
+  const tipoLine = params.tipo ? `\nIntención del usuario: quiere algo ${params.tipo}.` : '';
 
-  let modeLabel, inputsBlock;
+  let goalLine, timeLine, inputsBlock;
 
   if (mode === 'cookNow') {
-    modeLabel = 'quick';
-    inputsBlock = `Tiempo disponible: ${params.tiempo}\nDificultad deseada: ${params.dificultad}${params.objetivo ? `\nObjetivo nutricional: ${params.objetivo}` : ''}`;
+    timeLine = params.tiempo || 'flexible';
+    goalLine = params.objetivo || 'una receta práctica y nutritiva';
+    inputsBlock = `Dificultad deseada: ${params.dificultad}`;
   } else if (mode === 'ingredients') {
-    modeLabel = 'ingredients';
-    inputsBlock = `Ingredientes disponibles: ${params.ingredientes}`;
-  } else if (mode === 'mealPrep') {
-    modeLabel = 'mealprep';
-    inputsBlock = `Días a cubrir: ${params.dias}${params.objetivo ? `\nObjetivo nutricional: ${params.objetivo}` : ''}\nCada receta debe rendir ~${Number(params.dias) * 2} porciones y conservarse bien en frío.`;
+    timeLine = 'flexible';
+    goalLine = 'aprovechar los ingredientes disponibles';
+    inputsBlock = `Ingredientes disponibles: ${params.ingredientes}\nUsa SOLO estos ingredientes (más básicos de despensa como sal, aceite, especias).`;
   } else {
     throw new Error(`useCooking: modo desconocido "${mode}"`);
   }
 
   return `${locale}
-Actúa como un chef experto en cocina saludable, práctica y realista.
+Actúa como un asistente que NO da opciones, sino que toma decisiones por el usuario.
 
-Tu tarea es generar EXACTAMENTE 3 recetas distintas basadas en el contexto del usuario.
+Objetivo: Entregar UNA receta clara, coherente y lista para ejecutar, minimizando cualquier esfuerzo mental.
+
+Reglas clave:
+- NO entregues múltiples opciones
+- NO sugieras alternativas innecesarias
+- NO incluyas productos, marcas ni recomendaciones comerciales
+- TODO debe ser directamente útil para cocinar
+- Si algún ingrediente no cumple con las restricciones del usuario, reemplázalo automáticamente por una alternativa válida sin mencionarlo
 
 ## CONTEXTO DEL USUARIO
 
-Preferencias alimenticias:
-${preferences}
-
-Modo: ${modeLabel}
-
-Inputs del usuario:
+Preferencias: ${profileStr}
+Restricciones dietarias: ${restrictions}
+Objetivo: ${goalLine}
+Tiempo disponible: ${timeLine}
 ${inputsBlock}${tipoLine}
 
-## LÓGICA DE LAS 3 OPCIONES
+## INSTRUCCIONES
 
-1. Opción 1 → ⚡ Rápida y simple (label: "rápida")
-2. Opción 2 → ⚖️ Balanceada — mejor nutrición (label: "balanceada")
-3. Opción 3 → 🔄 Alternativa — distinta / creativa (label: "alternativa")
-
-## RESTRICCIONES
-
-- EXACTAMENTE 3 recetas
-- No repetir la misma base en las 3 opciones
-- Máx 6–8 ingredientes por receta
-- Máx 5–6 pasos por receta
-- Respetar SIEMPRE las preferencias (kosher, alergias, etc.)
-- Recetas realistas — que alguien realmente cocinaría
-- SOLO JSON, sin texto adicional
+1. Genera UNA receta óptima basada en el contexto
+2. Asegúrate de que TODOS los ingredientes respeten las restricciones (ej: kosher = 100% compatible)
+3. Prioriza simplicidad, rapidez y coherencia
+4. Evita ingredientes difíciles o innecesarios
+5. Máximo 6–8 ingredientes
+6. Máximo 5 pasos de preparación, lenguaje simple
+7. Incluye 1 sugerencia útil (tip)
+8. SOLO JSON, sin texto adicional
 
 ## FORMATO DE RESPUESTA (JSON OBLIGATORIO)
 
-{"recipes":[{"title":"","description":"","label":"rápida","time_minutes":0,"difficulty":"fácil","tags":["tag1"],"nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0},"ingredients":[{"name":"","amount":""}],"steps":["Paso 1"]}]}`;
+{"title":"","description":"Por qué es ideal (1 línea corta)","time_minutes":0,"difficulty":"fácil","tags":["tag1"],"nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0},"ingredients":[{"name":"","amount":""}],"steps":["Paso 1"],"tip":"1 sugerencia útil"}`;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * useCooking — generates 3 recipe options per mode/params combination.
+ * useCooking — generates a single decisive recipe per mode/params combination.
  *
- * - generate(mode, params)     → Promise<Recipe[] | null>
- * - getOptions(mode, params)   → Recipe[] | null  (cached result for these params)
- * - isLoading(mode, params)    → boolean
- * - getError(mode, params)     → string | null
+ * - generate(mode, params)   → Promise<Recipe | null>
+ * - getRecipe(mode, params)  → Recipe | null  (cached result for these params)
+ * - isLoading(mode, params)  → boolean
+ * - getError(mode, params)   → string | null
  */
 export function useCooking() {
-  const [options, setOptions] = useState({});   // key → Recipe[]
+  const [options, setOptions] = useState({});   // key → Recipe
   const [activeKeys, setActiveKeys] = useState(new Set());
   const [errors, setErrors] = useState({});
   const { profile, saveGeneratedRecipe } = useAppState();
@@ -185,23 +182,20 @@ export function useCooking() {
       try { parsed = JSON.parse(extractJSON(rawText)); }
       catch { throw new Error('Respuesta inesperada — intenta de nuevo'); }
 
-      const recipes = parsed?.recipes;
-      if (!Array.isArray(recipes) || recipes.length === 0) {
-        throw new Error('No se generaron recetas — intenta de nuevo');
-      }
+      // Single recipe — support both { recipe: {...} } wrapper and direct object
+      const raw = parsed?.recipe ?? parsed;
+      if (!raw?.title) throw new Error('No se generó receta — intenta de nuevo');
 
-      const normalized = recipes.slice(0, 3).map(normalizeCookingRecipe);
+      const recipe = normalizeCookingRecipe(raw);
 
       // Persist with TTL
-      cache.setCache(key, normalized);
+      cache.setCache(key, recipe);
 
       // Add to history (fire-and-forget)
-      if (saveGeneratedRecipe) {
-        normalized.forEach(r => saveGeneratedRecipe(r).catch(() => {}));
-      }
+      if (saveGeneratedRecipe) saveGeneratedRecipe(recipe).catch(() => {});
 
-      setOptions(o => ({ ...o, [key]: normalized }));
-      return normalized;
+      setOptions(o => ({ ...o, [key]: recipe }));
+      return recipe;
     } catch (err) {
       setErrors(e => ({ ...e, [key]: err.message }));
       return null;
@@ -210,9 +204,9 @@ export function useCooking() {
     }
   };
 
-  const getOptions = (mode, params) => options[_makeKey(mode, params)] ?? null;
+  const getRecipe = (mode, params) => options[_makeKey(mode, params)] ?? null;
   const isLoading = (mode, params) => activeKeys.has(_makeKey(mode, params));
   const getError = (mode, params) => errors[_makeKey(mode, params)] ?? null;
 
-  return { generate, getOptions, isLoading, getError };
+  return { generate, getRecipe, isLoading, getError };
 }

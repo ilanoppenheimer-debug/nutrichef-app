@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
 import RecipeBottomSheet from '../components/RecipeBottomSheet.jsx';
 import { MealPrepPlanCard, MealPrepSheet } from '../components/MealPrepPlanCard.jsx';
 import { useCooking } from '../hooks/useCooking.js';
@@ -37,142 +37,20 @@ function ChipGroup({ label, options, value, onChange }) {
   );
 }
 
-// ── Recommendation logic ──────────────────────────────────────────────────────
+// ── Result preview card (tap to re-open the generated recipe) ────────────────
 
-/**
- * Returns the index of the recipe the app should highlight as "recommended"
- * based on the user's current intent (tipo) and mode.
- *
- * Priority order:
- *  1. Explicit tipo signal (proteico → highest protein, liviano → lowest cal, etc.)
- *  2. Mode-specific default (cookNow → fastest, mealPrep → balanced)
- *  3. Fallback: recipe labelled "balanceada"
- */
-function getRecommendedIndex(recipes, tipo, mode) {
-  if (!recipes || recipes.length === 0) return 0;
-
-  const parseNum = (str) => parseFloat(String(str ?? '0').replace(/[^\d.]/g, '')) || 0;
-
-  if (tipo === 'proteico') {
-    let max = -1, idx = 0;
-    recipes.forEach((r, i) => { const v = parseNum(r.macros?.protein); if (v > max) { max = v; idx = i; } });
-    return idx;
-  }
-
-  if (tipo === 'liviano') {
-    let min = Infinity, idx = 0;
-    recipes.forEach((r, i) => { const v = parseNum(r.macros?.calories) || Infinity; if (v < min) { min = v; idx = i; } });
-    return idx;
-  }
-
-  if (tipo === 'snack') {
-    // Prefer lowest calories
-    let min = Infinity, idx = 0;
-    recipes.forEach((r, i) => { const v = parseNum(r.macros?.calories) || Infinity; if (v < min) { min = v; idx = i; } });
-    return idx;
-  }
-
-  if (tipo === 'comida completa') {
-    // Prefer highest calories (most complete)
-    let max = -1, idx = 0;
-    recipes.forEach((r, i) => { const v = parseNum(r.macros?.calories); if (v > max) { max = v; idx = i; } });
-    return idx;
-  }
-
-  // Mode defaults
-  if (mode === 'cookNow') {
-    // Prefer fastest — by time_minutes, then by "rápida" label
-    let min = Infinity, idx = -1;
-    recipes.forEach((r, i) => { const v = r._time_minutes ?? Infinity; if (v < min) { min = v; idx = i; } });
-    if (idx !== -1) return idx;
-    const ri = recipes.findIndex(r => r._label === 'rápida');
-    return ri !== -1 ? ri : 0;
-  }
-
-  if (mode === 'mealPrep') {
-    // Prefer "balanceada" for meal prep
-    const bi = recipes.findIndex(r => r._label === 'balanceada');
-    return bi !== -1 ? bi : 0;
-  }
-
-  // Default: "balanceada" label, else index 0
-  const bi = recipes.findIndex(r => r._label === 'balanceada');
-  return bi !== -1 ? bi : 0;
-}
-
-// ── Recipe option card (shown after generation) ───────────────────────────────
-
-const LABEL_CONFIG = {
-  'rápida':      { icon: '⚡', text: 'Rápida y simple' },
-  'balanceada':  { icon: '⚖️', text: 'Mejor nutrición' },
-  'alternativa': { icon: '🔄', text: 'Alternativa creativa' },
-};
-const FALLBACK_LABELS = ['Rápida y simple', 'Mejor nutrición', 'Alternativa creativa'];
-
-function RecipeOptionCard({ recipe, index, isRecommended, onSelect }) {
-  const labelCfg = LABEL_CONFIG[recipe._label] ?? { icon: '•', text: FALLBACK_LABELS[index] ?? `Opción ${index + 1}` };
-
+function RecipeResultCard({ recipe, onView }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(recipe)}
-      className={`w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.97] ${
-        isRecommended
-          ? 'border-[--c-primary-border] bg-[--c-primary-light] scale-[1.01] shadow-sm'
-          : 'border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 hover:border-[--c-primary-border]'
-      }`}
-      style={{ transitionDuration: '100ms' }}
+      onClick={onView}
+      className="w-full text-left p-4 rounded-2xl border border-[--c-primary-border] bg-[--c-primary-light] transition-all active:scale-[0.97]"
     >
-      {/* Label row */}
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-[10px] font-black uppercase tracking-widest ${isRecommended ? 'text-[--c-primary-text]' : 'text-slate-400 dark:text-slate-500'}`}>
-            {labelCfg.icon} {labelCfg.text}
-          </span>
-          {isRecommended && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-2 py-0.5 rounded-full text-white leading-none" style={{ background: 'var(--c-primary)' }}>
-              <Star size={9} fill="currentColor" /> Recomendada
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {recipe._time_minutes && (
-            <span className="text-[10px] font-bold text-slate-400">⏱ {recipe._time_minutes} min</span>
-          )}
-          {recipe._difficulty && (
-            <span className="text-[10px] font-bold text-slate-400 capitalize">· {recipe._difficulty}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Title */}
-      <p className={`font-black text-sm leading-snug ${isRecommended ? 'text-[--c-primary-text]' : 'text-slate-800 dark:text-white'}`}>
-        {recipe.title}
-      </p>
-
-      {/* Description */}
+      <p className="font-black text-sm leading-snug text-[--c-primary-text]">{recipe.title}</p>
       {recipe.description && (
-        <p className={`text-xs mt-1 line-clamp-2 ${isRecommended ? 'text-[--c-primary-text] opacity-80' : 'text-slate-500 dark:text-slate-400'}`}>
-          {recipe.description}
-        </p>
+        <p className="text-xs mt-0.5 text-[--c-primary-text] opacity-80 line-clamp-1">{recipe.description}</p>
       )}
-
-      {/* Nutrition mini-row */}
-      {recipe.macros && (
-        <div className="flex gap-3 mt-2">
-          {[
-            { label: 'Cal', val: recipe.macros.calories },
-            { label: 'Prot', val: recipe.macros.protein },
-          ].map(({ label, val }) => val && val !== '—' ? (
-            <span key={label} className={`text-[10px] font-bold ${isRecommended ? 'text-[--c-primary-text] opacity-70' : 'text-slate-400 dark:text-slate-500'}`}>
-              {label}: {val}
-            </span>
-          ) : null)}
-        </div>
-      )}
-
-      {/* CTA hint */}
-      <div className={`flex items-center gap-1 mt-2 ${isRecommended ? 'text-[--c-primary]' : ''}`} style={isRecommended ? {} : { color: 'var(--c-primary)' }}>
+      <div className="flex items-center gap-1 mt-2" style={{ color: 'var(--c-primary)' }}>
         <span className="text-xs font-bold">Ver receta</span>
         <ChevronRight size={13} strokeWidth={2.5} />
       </div>
@@ -182,7 +60,7 @@ function RecipeOptionCard({ recipe, index, isRecommended, onSelect }) {
 
 // ── Accordion card wrapper ────────────────────────────────────────────────────
 
-function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, ctaLabel, onGenerate, loading, options, onSelectOption, recommendedIndex, planOptions, onSelectPlan, planRecommendedIndex, children }) {
+function CookingCard({ icon: Icon, title, subtitle, isOpen, onToggle, ctaLabel, onGenerate, loading, result, onViewResult, planOptions, onSelectPlan, planRecommendedIndex, children }) {
   return (
     <div
       className={`rounded-3xl overflow-hidden bg-white dark:bg-gray-900 transition-all duration-200 ${
@@ -207,17 +85,7 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="font-black text-base text-slate-800 dark:text-white leading-snug">{title}</h2>
-            {badge && (
-              <span
-                className="text-[10px] font-black px-2 py-0.5 rounded-full text-white leading-none"
-                style={{ background: 'var(--c-primary)' }}
-              >
-                {badge}
-              </span>
-            )}
-          </div>
+          <h2 className="font-black text-base text-slate-800 dark:text-white leading-snug">{title}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>
         </div>
 
@@ -246,28 +114,13 @@ function CookingCard({ icon: Icon, title, subtitle, badge, isOpen, onToggle, cta
               style={{ background: 'var(--c-primary)' }}
             >
               {loading
-                ? <><RefreshCw size={16} className="animate-spin" /> Generando opciones...</>
+                ? <><RefreshCw size={16} className="animate-spin" /> Generando receta...</>
                 : <><Sparkles size={16} /> {ctaLabel}</>
               }
             </button>
 
-            {/* Recipe option cards */}
-            {options && options.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                  Elige una opción
-                </p>
-                {options.map((recipe, i) => (
-                  <RecipeOptionCard
-                    key={recipe.title + i}
-                    recipe={recipe}
-                    index={i}
-                    isRecommended={i === recommendedIndex}
-                    onSelect={onSelectOption}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Generated recipe preview — tap to re-open */}
+            {result && <RecipeResultCard recipe={result} onView={onViewResult} />}
 
             {/* Meal prep plan cards */}
             {planOptions && planOptions.length > 0 && (
@@ -358,7 +211,6 @@ function getRecommendedPlanIndex(plans, tipo) {
     return idx;
   }
 
-  // Default: plan labelled "balanceado", else 0
   const bi = plans.findIndex(p => p.label === 'balanceado');
   return bi !== -1 ? bi : 0;
 }
@@ -370,7 +222,7 @@ export default function CookingHome() {
   const [viewingRecipe, setViewingRecipe] = useState(null);
   const [viewingPlan, setViewingPlan] = useState(null);
 
-  // Global intention — shared across all 3 cards
+  // Global intention — shared across all cards
   const [tipo, setTipo] = useState(null);
 
   // cookNow params
@@ -386,28 +238,33 @@ export default function CookingHome() {
   const [objetivoPrep, setObjetivoPrep] = useState(null);
   const [tiempoDisponible, setTiempoDisponible] = useState('flexible');
 
-  const { generate, getOptions, isLoading, getError } = useCooking();
+  const { generate, getRecipe, isLoading, getError } = useCooking();
   const mealPrep = useMealPrep();
 
-  // Current params objects — tipo is included in all so cache keys reflect it
+  // Current params objects — tipo is included so cache keys reflect it
   const cookNowParams = { tiempo, dificultad, objetivo: objetivoCook, tipo };
   const ingredientsParams = { ingredientes: ingredientes.trim(), tipo };
   const mealPrepParams = { dias, objetivo: objetivoPrep, tiempoDisponible };
 
   const toggle = (id) => setActiveCard(prev => (prev === id ? null : id));
 
-  const handleCookNow = () => generate('cookNow', cookNowParams);
-  const handleIngredients = () => { if (ingredientes.trim()) generate('ingredients', ingredientsParams); };
+  // Generate → auto-open bottom sheet with the result
+  const handleCookNow = async () => {
+    const recipe = await generate('cookNow', cookNowParams);
+    if (recipe) setViewingRecipe(recipe);
+  };
+  const handleIngredients = async () => {
+    if (!ingredientes.trim()) return;
+    const recipe = await generate('ingredients', ingredientsParams);
+    if (recipe) setViewingRecipe(recipe);
+  };
   const handleMealPrep = () => mealPrep.generate(mealPrepParams);
 
-  // Cached option arrays for current params
-  const cookNowOptions = getOptions('cookNow', cookNowParams);
-  const ingredientsOptions = getOptions('ingredients', ingredientsParams);
+  // Cached results for current params
+  const cookNowRecipe = getRecipe('cookNow', cookNowParams);
+  const ingredientsRecipe = getRecipe('ingredients', ingredientsParams);
   const mealPrepPlans = mealPrep.getPlans(mealPrepParams);
 
-  // Recommended index per card
-  const cookNowRec = getRecommendedIndex(cookNowOptions, tipo, 'cookNow');
-  const ingredientsRec = getRecommendedIndex(ingredientsOptions, tipo, 'ingredients');
   const mealPrepRec = getRecommendedPlanIndex(mealPrepPlans, tipo);
 
   return (
@@ -416,7 +273,7 @@ export default function CookingHome() {
       <div className="pt-1">
         <h1 className="text-2xl font-black text-slate-800 dark:text-white">¿Qué cocinamos?</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Elige cómo quieres empezar — te doy 3 opciones.
+          Elige cómo quieres empezar y yo decido la receta.
         </p>
       </div>
 
@@ -452,15 +309,13 @@ export default function CookingHome() {
         icon={Flame}
         title="Cocinar ahora"
         subtitle="Te sugiero qué preparar según tu tiempo"
-        badge={cookNowOptions ? `${cookNowOptions.length} opciones` : null}
         isOpen={activeCard === 'cookNow'}
         onToggle={() => toggle('cookNow')}
-        ctaLabel={cookNowOptions ? 'Generar nuevas opciones' : 'Sugerir receta'}
+        ctaLabel={cookNowRecipe ? 'Generar nueva receta' : 'Sugerir receta'}
         onGenerate={handleCookNow}
         loading={isLoading('cookNow', cookNowParams)}
-        options={cookNowOptions}
-        onSelectOption={setViewingRecipe}
-        recommendedIndex={cookNowRec}
+        result={cookNowRecipe}
+        onViewResult={() => setViewingRecipe(cookNowRecipe)}
       >
         <ChipGroup label="Tiempo disponible" options={TIEMPO_OPTIONS} value={tiempo} onChange={setTiempo} />
         <ChipGroup label="Dificultad" options={DIFICULTAD_OPTIONS} value={dificultad} onChange={setDificultad} />
@@ -478,15 +333,13 @@ export default function CookingHome() {
         icon={ShoppingBag}
         title="Tengo ingredientes"
         subtitle="Dime qué tienes y te digo qué preparar"
-        badge={ingredientsOptions ? `${ingredientsOptions.length} opciones` : null}
         isOpen={activeCard === 'ingredients'}
         onToggle={() => toggle('ingredients')}
-        ctaLabel={ingredientsOptions ? 'Generar nuevas opciones' : '¿Qué puedo cocinar?'}
+        ctaLabel={ingredientsRecipe ? 'Generar nueva receta' : '¿Qué puedo cocinar?'}
         onGenerate={handleIngredients}
         loading={isLoading('ingredients', ingredientsParams)}
-        options={ingredientsOptions}
-        onSelectOption={setViewingRecipe}
-        recommendedIndex={ingredientsRec}
+        result={ingredientsRecipe}
+        onViewResult={() => setViewingRecipe(ingredientsRecipe)}
       >
         <div>
           <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2.5">
@@ -513,7 +366,6 @@ export default function CookingHome() {
         icon={Package}
         title="Meal prep"
         subtitle="Cocina una vez, come varios días"
-        badge={mealPrepPlans ? `${mealPrepPlans.length} planes` : null}
         isOpen={activeCard === 'mealPrep'}
         onToggle={() => toggle('mealPrep')}
         ctaLabel={mealPrepPlans ? 'Generar nuevos planes' : 'Planificar meal prep'}
@@ -534,7 +386,7 @@ export default function CookingHome() {
         )}
       </CookingCard>
 
-      {/* Recipe result — bottom sheet (swipe-to-close on mobile, modal on desktop) */}
+      {/* Recipe result — bottom sheet */}
       <RecipeBottomSheet
         recipe={viewingRecipe}
         onClose={() => setViewingRecipe(null)}
