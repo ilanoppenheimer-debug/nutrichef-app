@@ -1,40 +1,45 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Flame, Package, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
+import { ChevronRight, Flame, Package, Plus, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
 import RecipeBottomSheet from '../components/RecipeBottomSheet.jsx';
 import { MealPrepResultCard, MealPrepSheet } from '../components/MealPrepPlanCard.jsx';
 import { useCooking } from '../hooks/useCooking.js';
 import { useMealPrep } from '../hooks/useMealPrep.js';
 
-// ── Chip selector ─────────────────────────────────────────────────────────────
+// ── Intent options (single source of truth) ──────────────────────────────────
 
-function ChipGroup({ label, options, value, onChange }) {
-  return (
-    <div>
-      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2.5">
-        {label}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {options.map(opt => {
-          const isSelected = value === opt.value;
-          return (
-            <button
-              key={String(opt.value)}
-              type="button"
-              onClick={() => onChange(isSelected && opt.optional ? null : opt.value)}
-              className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 border ${
-                isSelected
-                  ? 'text-white border-transparent'
-                  : 'bg-slate-50 dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-gray-600'
-              }`}
-              style={isSelected ? { background: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : {}}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+const INTENT_OPTIONS = [
+  { value: 'inspirame', label: '✨ Inspírame' },
+  { value: 'proteico',  label: '💪 Proteico' },
+  { value: 'liviano',   label: '🥗 Liviano' },
+  { value: 'dulce',     label: '🍫 Dulce' },
+  { value: 'economico', label: '💸 Económico' },
+  { value: 'snack',     label: '🍎 Snack' },
+];
+const VALID_INTENTS = new Set(INTENT_OPTIONS.map(o => o.value));
+const INTENT_STORAGE_KEY = 'nutrichef_cook_intent';
+
+function loadInitialIntent() {
+  try {
+    const saved = localStorage.getItem(INTENT_STORAGE_KEY);
+    if (saved && VALID_INTENTS.has(saved)) return saved;
+  } catch { /* ignore */ }
+  return 'inspirame';
+}
+
+// ── Suggested ingredient chips for the "tengo ingredientes" card ─────────────
+
+const SUGGESTED_INGREDIENTS = [
+  'pollo', 'arroz', 'huevo', 'atún', 'pasta', 'tomate', 'cebolla', 'lentejas',
+];
+
+// ── Time-of-day bucket (silent meal-type inference for the model) ────────────
+
+function getTimeOfDay(hour = new Date().getHours()) {
+  if (hour >= 5 && hour < 11) return 'manana';
+  if (hour >= 11 && hour < 16) return 'mediodia';
+  if (hour >= 16 && hour < 19) return 'tarde';
+  if (hour >= 19 && hour < 23) return 'noche';
+  return 'noche_tarde';
 }
 
 // ── Result preview card (tap to re-open the generated recipe) ────────────────
@@ -44,11 +49,11 @@ function RecipeResultCard({ recipe, onView }) {
     <button
       type="button"
       onClick={onView}
-      className="w-full text-left p-4 rounded-2xl border border-[--c-primary-border] bg-[--c-primary-light] transition-all active:scale-[0.97]"
+      className="w-full text-left p-4 rounded-2xl border border-[--c-primary-border] bg-[--c-primary-light] transition-transform active:scale-[0.98]"
     >
       <p className="font-black text-sm leading-snug text-[--c-primary-text]">{recipe.title}</p>
       {recipe.description && (
-        <p className="text-xs mt-0.5 text-[--c-primary-text] opacity-80 line-clamp-1">{recipe.description}</p>
+        <p className="text-xs mt-0.5 text-[--c-primary-text] opacity-80 line-clamp-2">{recipe.description}</p>
       )}
       <div className="flex items-center gap-1 mt-2" style={{ color: 'var(--c-primary)' }}>
         <span className="text-xs font-bold">Ver receta</span>
@@ -58,336 +63,368 @@ function RecipeResultCard({ recipe, onView }) {
   );
 }
 
-// ── Accordion card wrapper ────────────────────────────────────────────────────
+// ── Action card (always-visible, large, mobile-first) ────────────────────────
 
-function CookingCard({ icon: Icon, title, subtitle, isOpen, onToggle, ctaLabel, onGenerate, loading, loadingLabel, result, resultRenderer, children }) {
+function ActionCard({ icon: Icon, title, subtitle, children }) {
   return (
-    <div
-      className={`rounded-3xl overflow-hidden bg-white dark:bg-gray-900 transition-all duration-200 ${
-        isOpen
-          ? 'shadow-lg border-2 border-[--c-primary-border]'
-          : 'border border-slate-100 dark:border-gray-800'
-      }`}
-    >
-      {/* Always-visible header */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3.5 px-5 py-4 text-left transition-colors active:bg-slate-50 dark:active:bg-gray-800/60"
-      >
+    <section className="rounded-3xl bg-white dark:bg-gray-900 border border-slate-100 dark:border-gray-800 shadow-sm p-5 space-y-4">
+      <header className="flex items-center gap-3.5">
         <div
-          className="flex h-11 w-11 items-center justify-center rounded-2xl shrink-0 transition-colors duration-200"
-          style={isOpen
-            ? { background: 'var(--c-primary)', color: 'white' }
-            : { background: 'var(--c-primary-light)', color: 'var(--c-primary)' }}
+          className="flex h-12 w-12 items-center justify-center rounded-2xl shrink-0"
+          style={{ background: 'var(--c-primary-light)', color: 'var(--c-primary)' }}
         >
-          <Icon size={21} />
+          <Icon size={22} />
         </div>
-
         <div className="flex-1 min-w-0">
           <h2 className="font-black text-base text-slate-800 dark:text-white leading-snug">{title}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
         </div>
-
-        <ChevronDown
-          size={18}
-          className={`shrink-0 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {/* Smooth-expanding body */}
-      <div
-        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
-          isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-        }`}
-      >
-        <div className="overflow-hidden">
-          <div className="px-5 pb-5 pt-1 space-y-4">
-            {children}
-
-            {/* CTA */}
-            <button
-              type="button"
-              onClick={onGenerate}
-              disabled={loading}
-              className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-white font-black text-sm disabled:opacity-60 active:opacity-80 transition-opacity"
-              style={{ background: 'var(--c-primary)' }}
-            >
-              {loading
-                ? <><RefreshCw size={16} className="animate-spin" /> {loadingLabel || 'Generando...'}</>
-                : <><Sparkles size={16} /> {ctaLabel}</>
-              }
-            </button>
-
-            {/* Generated result preview — tap to re-open */}
-            {result && resultRenderer && resultRenderer(result)}
-          </div>
-        </div>
-      </div>
-    </div>
+      </header>
+      {children}
+    </section>
   );
 }
 
-// ── Option data ───────────────────────────────────────────────────────────────
+// ── Primary CTA button (used inside every action card) ──────────────────────
 
-const TIEMPO_OPTIONS = [
-  { value: 'rápido (menos de 20 min)', label: '⚡ Rápido' },
-  { value: 'medio (20–40 min)', label: '⏱ Medio' },
-  { value: 'largo (más de 40 min)', label: '🕐 Sin prisa' },
-];
-
-const DIFICULTAD_OPTIONS = [
-  { value: 'fácil, paso a paso simple', label: '😊 Fácil' },
-  { value: 'intermedio', label: '👨‍🍳 Intermedio' },
-];
-
-const OBJETIVO_COOK_OPTIONS = [
-  { value: null, label: '🎯 Sin filtro', optional: true },
-  { value: 'alta en proteína', label: '💪 Proteína' },
-  { value: 'baja en calorías y saludable', label: '🥗 Ligera' },
-  { value: 'energética y nutritiva', label: '⚡ Energía' },
-];
-
-const DIAS_OPTIONS = [
-  { value: '2', label: '2 días' },
-  { value: '3', label: '3 días' },
-  { value: '4', label: '4 días' },
-  { value: '5', label: '5 días' },
-];
-
-// Modo del plan — guía interna para el modelo (no se muestra explícitamente)
-const MODE_OPTIONS = [
-  { value: 'rapido',        label: '⚡ Rápido' },
-  { value: 'alto_proteina', label: '💪 Proteína' },
-  { value: 'alto_en_fibra', label: '🌾 Fibra' },
-  { value: 'vegetariano',   label: '🥗 Veggie' },
-  { value: 'economico',     label: '💸 Económico' },
-];
-
-const TIPO_OPTIONS = [
-  { value: null, label: '✨ Cualquiera', optional: true },
-  { value: 'proteico', label: '💪 Proteico' },
-  { value: 'liviano', label: '🥗 Liviano' },
-  { value: 'comida completa', label: '🍽️ Completa' },
-  { value: 'antojo dulce', label: '🍫 Dulce' },
-  { value: 'snack', label: '🍎 Snack' },
-];
+function PrimaryButton({ onClick, disabled, loading, loadingLabel, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || loading}
+      className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-white font-black text-sm disabled:opacity-60 disabled:cursor-not-allowed active:opacity-80 transition-opacity"
+      style={{ background: 'var(--c-primary)' }}
+    >
+      {loading
+        ? <><RefreshCw size={16} className="animate-spin" /> {loadingLabel}</>
+        : <><Sparkles size={16} /> {children}</>
+      }
+    </button>
+  );
+}
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export default function CookingHome() {
-  const [activeCard, setActiveCard] = useState('cookNow');
+  // Sheets
   const [viewingRecipe, setViewingRecipe] = useState(null);
   const [viewingPlan, setViewingPlan] = useState(null);
 
-  // Global intention — shared across all cards
-  const [tipo, setTipo] = useState(null);
+  // Intent (persisted, falls back to "inspirame")
+  const [intent, setIntent] = useState(loadInitialIntent);
+  useEffect(() => {
+    try { localStorage.setItem(INTENT_STORAGE_KEY, intent); } catch { /* ignore */ }
+  }, [intent]);
 
-  // cookNow params
-  const [tiempo, setTiempo] = useState('rápido (menos de 20 min)');
-  const [dificultad, setDificultad] = useState('fácil, paso a paso simple');
-  const [objetivoCook, setObjetivoCook] = useState(null);
-
-  // ingredients params
+  // Ingredients input
   const [ingredientes, setIngredientes] = useState('');
 
-  // mealPrep params
-  const [dias, setDias] = useState('3');
-  const [mode, setMode] = useState('rapido');
-
-  // Current displayed meal prep plan — tracks tweaks separately from base cache
-  // so iterative adjustments compound on top of each other
+  // Currently displayed results — separate from the cache so iterative tweaks compound
+  const [currentCookNowRecipe, setCurrentCookNowRecipe] = useState(null);
+  const [currentIngredientsRecipe, setCurrentIngredientsRecipe] = useState(null);
   const [currentMealPrepPlan, setCurrentMealPrepPlan] = useState(null);
-  const [tweakingType, setTweakingType] = useState(null);
+
+  // In-flight tweak markers (one per surface)
+  const [cookNowTweakingType, setCookNowTweakingType] = useState(null);
+  const [ingredientsTweakingType, setIngredientsTweakingType] = useState(null);
+  const [mealPrepTweakingType, setMealPrepTweakingType] = useState(null);
 
   const { generate, getRecipe, isLoading, getError } = useCooking();
   const mealPrep = useMealPrep();
 
-  // Current params objects — tipo is included so cache keys reflect it
-  const cookNowParams = { tiempo, dificultad, objetivo: objetivoCook, tipo };
-  const ingredientsParams = { ingredientes: ingredientes.trim(), tipo };
-  const mealPrepParams = { dias, mode };
+  // Compute current params (time_of_day captured at generation time, not stored,
+  // so the cache key reflects the moment the request was made)
+  const buildCookNowParams = () => ({ intent, time_of_day: getTimeOfDay() });
+  const buildIngredientsParams = () => ({
+    intent,
+    time_of_day: getTimeOfDay(),
+    ingredientes: ingredientes.trim(),
+  });
+  const buildMealPrepParams = () => ({ intent });
 
-  // When base meal prep params change, sync the displayed plan to whatever
-  // the cache has for the new params (or null). Discards any active tweak.
+  // When intent or ingredients change, sync the displayed result to whatever
+  // the cache has for the new params (or null). Discards stale tweaks.
   useEffect(() => {
-    setCurrentMealPrepPlan(mealPrep.getPlan(mealPrepParams));
+    setCurrentCookNowRecipe(getRecipe('cookNow', buildCookNowParams()));
+    setCurrentMealPrepPlan(mealPrep.getPlan(buildMealPrepParams()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dias, mode]);
+  }, [intent]);
 
-  const toggle = (id) => setActiveCard(prev => (prev === id ? null : id));
+  useEffect(() => {
+    setCurrentIngredientsRecipe(getRecipe('ingredients', buildIngredientsParams()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intent, ingredientes]);
 
-  // Generate → auto-open bottom sheet with the result
+  // ── Generate handlers ──────────────────────────────────────────────────────
+
   const handleCookNow = async () => {
-    const recipe = await generate('cookNow', cookNowParams);
-    if (recipe) setViewingRecipe(recipe);
+    const params = buildCookNowParams();
+    const recipe = await generate('cookNow', params);
+    if (recipe) {
+      setCurrentCookNowRecipe(recipe);
+      setViewingRecipe(recipe);
+    }
   };
+
   const handleIngredients = async () => {
     if (!ingredientes.trim()) return;
-    const recipe = await generate('ingredients', ingredientsParams);
-    if (recipe) setViewingRecipe(recipe);
+    const params = buildIngredientsParams();
+    const recipe = await generate('ingredients', params);
+    if (recipe) {
+      setCurrentIngredientsRecipe(recipe);
+      setViewingRecipe(recipe);
+    }
   };
+
   const handleMealPrep = async () => {
-    const plan = await mealPrep.generate(mealPrepParams);
+    const params = buildMealPrepParams();
+    const plan = await mealPrep.generate(params);
     if (plan) {
       setCurrentMealPrepPlan(plan);
       setViewingPlan(plan);
     }
   };
-  const handleMealPrepTweak = async (changeType) => {
-    if (!currentMealPrepPlan || tweakingType) return;
-    setTweakingType(changeType);
+
+  // ── Tweak handlers (compound on the currently displayed result) ────────────
+
+  const handleCookNowTweak = async (changeType) => {
+    if (!currentCookNowRecipe || cookNowTweakingType) return;
+    setCookNowTweakingType(changeType);
     try {
-      const plan = await mealPrep.generate(
-        { ...mealPrepParams, change_type: changeType },
-        { previousPlan: currentMealPrepPlan }
-      );
+      const params = { ...buildCookNowParams(), change_type: changeType };
+      const recipe = await generate('cookNow', params, { previousRecipe: currentCookNowRecipe });
+      if (recipe) {
+        setCurrentCookNowRecipe(recipe);
+        setViewingRecipe(recipe);
+      }
+    } finally {
+      setCookNowTweakingType(null);
+    }
+  };
+
+  const handleIngredientsTweak = async (changeType) => {
+    if (!currentIngredientsRecipe || ingredientsTweakingType) return;
+    setIngredientsTweakingType(changeType);
+    try {
+      const params = { ...buildIngredientsParams(), change_type: changeType };
+      const recipe = await generate('ingredients', params, { previousRecipe: currentIngredientsRecipe });
+      if (recipe) {
+        setCurrentIngredientsRecipe(recipe);
+        setViewingRecipe(recipe);
+      }
+    } finally {
+      setIngredientsTweakingType(null);
+    }
+  };
+
+  const handleMealPrepTweak = async (changeType) => {
+    if (!currentMealPrepPlan || mealPrepTweakingType) return;
+    setMealPrepTweakingType(changeType);
+    try {
+      const params = { ...buildMealPrepParams(), change_type: changeType };
+      const plan = await mealPrep.generate(params, { previousPlan: currentMealPrepPlan });
       if (plan) {
         setCurrentMealPrepPlan(plan);
         setViewingPlan(plan);
       }
     } finally {
-      setTweakingType(null);
+      setMealPrepTweakingType(null);
     }
   };
 
-  // Cached results for current params
-  const cookNowRecipe = getRecipe('cookNow', cookNowParams);
-  const ingredientsRecipe = getRecipe('ingredients', ingredientsParams);
+  // ── Suggested ingredient chip → append to textarea ─────────────────────────
+
+  const addIngredient = (item) => {
+    setIngredientes(prev => {
+      const trimmed = prev.trim();
+      const tokens = trimmed
+        ? trimmed.toLowerCase().split(/[,\n]+/).map(s => s.trim())
+        : [];
+      if (tokens.includes(item.toLowerCase())) return prev;
+      return trimmed ? `${trimmed}, ${item}` : item;
+    });
+  };
+
+  // ── Loading / error helpers for the active sheet ───────────────────────────
+
+  // Which surface owns viewingRecipe → wire its tweak handler to the sheet
+  const recipeSheetTweakHandler = (() => {
+    if (!viewingRecipe) return null;
+    if (viewingRecipe === currentCookNowRecipe) return handleCookNowTweak;
+    if (viewingRecipe === currentIngredientsRecipe) return handleIngredientsTweak;
+    return null;
+  })();
+  const recipeSheetTweakingType = (() => {
+    if (!viewingRecipe) return null;
+    if (viewingRecipe === currentCookNowRecipe) return cookNowTweakingType;
+    if (viewingRecipe === currentIngredientsRecipe) return ingredientsTweakingType;
+    return null;
+  })();
+
+  const cookNowParams = buildCookNowParams();
+  const ingredientsParams = buildIngredientsParams();
+  const mealPrepParams = buildMealPrepParams();
 
   return (
-    <div className="max-w-lg mx-auto space-y-4">
-      {/* Page header */}
-      <div className="pt-1">
-        <h1 className="text-2xl font-black text-slate-800 dark:text-white">¿Qué cocinamos?</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Elige cómo quieres empezar y yo decido la receta.
-        </p>
-      </div>
+    <div className="max-w-lg mx-auto space-y-5">
+      {/* ── 1. Header ──────────────────────────────────────────────────────── */}
+      <header className="pt-1">
+        <h1 className="text-2xl font-black text-slate-800 dark:text-white">¿Qué te apetece hoy?</h1>
+      </header>
 
-      {/* Tipo de comida — global intention selector */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 px-4 py-3.5">
-        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2.5">
-          ¿Qué te apetece?
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {TIPO_OPTIONS.map(opt => {
-            const isSelected = tipo === opt.value;
+      {/* ── 2. Intent chips (single source of truth, persisted) ───────────── */}
+      <nav
+        aria-label="Intención"
+        className="-mx-1 overflow-x-auto scrollbar-none"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <div className="flex gap-2 px-1 pb-1 min-w-max">
+          {INTENT_OPTIONS.map(opt => {
+            const isActive = intent === opt.value;
             return (
               <button
-                key={String(opt.value)}
+                key={opt.value}
                 type="button"
-                onClick={() => setTipo(isSelected && opt.optional ? null : opt.value)}
-                className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all active:scale-95 border ${
-                  isSelected
-                    ? 'text-white border-transparent'
-                    : 'bg-slate-50 dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-gray-600'
+                onClick={() => setIntent(opt.value)}
+                aria-pressed={isActive}
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-colors border ${
+                  isActive
+                    ? 'text-white border-transparent shadow-sm'
+                    : 'bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200'
                 }`}
-                style={isSelected ? { background: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : {}}
+                style={isActive ? { background: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : {}}
               >
                 {opt.label}
               </button>
             );
           })}
         </div>
-      </div>
+      </nav>
 
-      {/* ── Card 1: Cocinar ahora ── */}
-      <CookingCard
+      {/* ── 3. Action cards (always visible, in priority order) ──────────── */}
+
+      {/* Card 1: Cocinar ahora */}
+      <ActionCard
         icon={Flame}
         title="Cocinar ahora"
-        subtitle="Te sugiero qué preparar según tu tiempo"
-        isOpen={activeCard === 'cookNow'}
-        onToggle={() => toggle('cookNow')}
-        ctaLabel={cookNowRecipe ? 'Generar nueva receta' : 'Sugerir receta'}
-        onGenerate={handleCookNow}
-        loading={isLoading('cookNow', cookNowParams)}
-        loadingLabel="Generando receta..."
-        result={cookNowRecipe}
-        resultRenderer={(r) => <RecipeResultCard recipe={r} onView={() => setViewingRecipe(r)} />}
+        subtitle="Yo decido qué preparar"
       >
-        <ChipGroup label="Tiempo disponible" options={TIEMPO_OPTIONS} value={tiempo} onChange={setTiempo} />
-        <ChipGroup label="Dificultad" options={DIFICULTAD_OPTIONS} value={dificultad} onChange={setDificultad} />
-        <ChipGroup label="Objetivo (opcional)" options={OBJETIVO_COOK_OPTIONS} value={objetivoCook} onChange={setObjetivoCook} />
+        <PrimaryButton
+          onClick={handleCookNow}
+          loading={isLoading('cookNow', cookNowParams)}
+          loadingLabel="Generando receta..."
+        >
+          {currentCookNowRecipe ? 'Generar otra receta' : 'Sugerir receta'}
+        </PrimaryButton>
+
+        {currentCookNowRecipe && (
+          <RecipeResultCard
+            recipe={currentCookNowRecipe}
+            onView={() => setViewingRecipe(currentCookNowRecipe)}
+          />
+        )}
 
         {getError('cookNow', cookNowParams) && (
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">
             {getError('cookNow', cookNowParams)}
           </p>
         )}
-      </CookingCard>
+      </ActionCard>
 
-      {/* ── Card 2: Tengo ingredientes ── */}
-      <CookingCard
+      {/* Card 2: Tengo ingredientes */}
+      <ActionCard
         icon={ShoppingBag}
         title="Tengo ingredientes"
-        subtitle="Dime qué tienes y te digo qué preparar"
-        isOpen={activeCard === 'ingredients'}
-        onToggle={() => toggle('ingredients')}
-        ctaLabel={ingredientsRecipe ? 'Generar nueva receta' : '¿Qué puedo cocinar?'}
-        onGenerate={handleIngredients}
-        loading={isLoading('ingredients', ingredientsParams)}
-        loadingLabel="Generando receta..."
-        result={ingredientsRecipe}
-        resultRenderer={(r) => <RecipeResultCard recipe={r} onView={() => setViewingRecipe(r)} />}
+        subtitle="Dime qué tienes y resuelvo el resto"
       >
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2.5">
-            Ingredientes disponibles
-          </p>
-          <textarea
-            value={ingredientes}
-            onChange={e => setIngredientes(e.target.value)}
-            placeholder="Ej: pollo, arroz, zanahoria, ajo, aceite de oliva..."
-            rows={3}
-            className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none focus:outline-none focus:border-[--c-primary-border] transition-colors"
-          />
+        <textarea
+          value={ingredientes}
+          onChange={e => setIngredientes(e.target.value)}
+          placeholder="Ej: pollo, arroz, zanahoria..."
+          rows={2}
+          className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none focus:outline-none focus:border-[--c-primary-border] transition-colors"
+        />
+
+        {/* Suggested chips for faster input */}
+        <div className="flex flex-wrap gap-1.5">
+          {SUGGESTED_INGREDIENTS.map(item => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => addIngredient(item)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-gray-700 active:scale-95 transition-transform"
+            >
+              <Plus size={11} strokeWidth={3} /> {item}
+            </button>
+          ))}
         </div>
+
+        <PrimaryButton
+          onClick={handleIngredients}
+          disabled={!ingredientes.trim()}
+          loading={isLoading('ingredients', ingredientsParams)}
+          loadingLabel="Generando receta..."
+        >
+          {currentIngredientsRecipe ? 'Generar otra receta' : '¿Qué puedo cocinar?'}
+        </PrimaryButton>
+
+        {currentIngredientsRecipe && (
+          <RecipeResultCard
+            recipe={currentIngredientsRecipe}
+            onView={() => setViewingRecipe(currentIngredientsRecipe)}
+          />
+        )}
 
         {getError('ingredients', ingredientsParams) && (
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">
             {getError('ingredients', ingredientsParams)}
           </p>
         )}
-      </CookingCard>
+      </ActionCard>
 
-      {/* ── Card 3: Meal prep ── */}
-      <CookingCard
+      {/* Card 3: Meal prep */}
+      <ActionCard
         icon={Package}
-        title="Meal prep"
-        subtitle="Cocina una vez, come varios días"
-        isOpen={activeCard === 'mealPrep'}
-        onToggle={() => toggle('mealPrep')}
-        ctaLabel={currentMealPrepPlan ? 'Generar nuevo plan' : 'Planificar meal prep'}
-        onGenerate={handleMealPrep}
-        loading={mealPrep.isLoading(mealPrepParams)}
-        loadingLabel="Generando plan..."
-        result={currentMealPrepPlan}
-        resultRenderer={(p) => <MealPrepResultCard plan={p} onView={() => setViewingPlan(p)} />}
+        title="Meal prep · 3 días"
+        subtitle="Cocina una vez, come tres días"
       >
-        <ChipGroup label="Días a cubrir" options={DIAS_OPTIONS} value={dias} onChange={setDias} />
-        <ChipGroup label="Estilo del plan" options={MODE_OPTIONS} value={mode} onChange={setMode} />
+        <PrimaryButton
+          onClick={handleMealPrep}
+          loading={mealPrep.isLoading(mealPrepParams)}
+          loadingLabel="Generando plan..."
+        >
+          {currentMealPrepPlan ? 'Generar otro plan' : 'Planificar meal prep'}
+        </PrimaryButton>
+
+        {currentMealPrepPlan && (
+          <MealPrepResultCard
+            plan={currentMealPrepPlan}
+            onView={() => setViewingPlan(currentMealPrepPlan)}
+          />
+        )}
 
         {mealPrep.getError(mealPrepParams) && (
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">
             {mealPrep.getError(mealPrepParams)}
           </p>
         )}
-      </CookingCard>
+      </ActionCard>
 
-      {/* Recipe result — bottom sheet */}
+      {/* ── Sheets ──────────────────────────────────────────────────────────── */}
       <RecipeBottomSheet
         recipe={viewingRecipe}
         onClose={() => setViewingRecipe(null)}
         onRecipeChange={setViewingRecipe}
+        onTweak={recipeSheetTweakHandler}
+        tweakingType={recipeSheetTweakingType}
       />
 
-      {/* Meal prep plan detail — bottom sheet */}
       <MealPrepSheet
         plan={viewingPlan}
         onClose={() => setViewingPlan(null)}
         onTweak={handleMealPrepTweak}
-        tweakingType={tweakingType}
+        tweakingType={mealPrepTweakingType}
       />
     </div>
   );

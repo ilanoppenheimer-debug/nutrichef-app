@@ -12,6 +12,9 @@ import {
 // Meal prep plans are less volatile than single recipes — cache for 2 hours
 const MEAL_PREP_TTL = 2 * 60 * 60 * 1000;
 
+// Fixed plan length — the user shouldn't think about this
+const PLAN_DAYS = 3;
+
 // ── JSON extraction ───────────────────────────────────────────────────────────
 
 function extractJSON(text) {
@@ -24,33 +27,31 @@ function extractJSON(text) {
 // ── Cache key ─────────────────────────────────────────────────────────────────
 
 function makePlanKey(params, profileSlice) {
-  return JSON.stringify({ type: 'mealprep_v4', params, p: profileSlice });
+  return JSON.stringify({ type: 'mealprep_v5', params, p: profileSlice });
 }
 
-// ── Mode → silent guidance for the model ──────────────────────────────────────
-// IMPORTANT: never mention the mode to the user. The model uses these to bias
-// ingredient choices but the output should feel natural.
+// ── Intent → silent guidance ──────────────────────────────────────────────────
 
-const MODE_GUIDANCE = {
-  alto_proteina:  'Prioriza carnes magras, huevos y legumbres. Asegura alta densidad de proteína por porción.',
-  vegetariano:    'Sin carnes ni pescados. Usa legumbres, huevos y lácteos (si las preferencias lo permiten).',
-  economico:      'Prioriza ingredientes baratos: legumbres, arroz, huevo, verduras de estación. Evita carnes caras.',
-  alto_en_fibra:  'Incluye verduras, legumbres y granos integrales. Maximiza fibra por porción.',
-  rapido:         'Minimiza tiempo total y pasos. Recetas que se cocinen rápido y compartan cocción.',
+const INTENT_GUIDANCE = {
+  inspirame: 'Plan equilibrado y accesible. Sin extremos, fácil de ejecutar.',
+  proteico:  'Maximiza proteína por porción. Carnes magras, huevos, legumbres.',
+  liviano:   'Bajo en calorías. Verduras, ensaladas, proteínas magras.',
+  dulce:     'Plan con un componente dulce simple incorporado (desayunos o snacks dulces). Mantén el balance.',
+  economico: 'Prioriza ingredientes baratos: huevo, legumbres, arroz, verduras de estación. Evita carnes caras.',
+  snack:     'Comidas pequeñas, ligeras y rápidas. Estilo "snacks completos" más que platos grandes.',
 };
 
 // ── Directed change → silent adjustment guidance ─────────────────────────────
-// Used when the user requests a tweak (e.g. "más proteína") on top of a plan.
 
 export const CHANGE_GUIDANCE = {
-  mas_economico: 'Reemplazar carnes caras por huevo y legumbres. Reducir la variedad de ingredientes.',
+  mas_simple:    'Reducir pasos y preparaciones distintas. Plan más rápido y simple de ejecutar.',
+  mas_economico: 'Reemplazar carnes caras por huevo y legumbres. Reducir variedad de ingredientes.',
   mas_proteina:  'Aumentar huevo, pollo y legumbres. Mantener todo simple.',
   sin_carne:     'Eliminar todas las carnes y pescados. Usar legumbres, huevo y lácteos si las preferencias lo permiten.',
-  mas_rapido:    'Reducir pasos y preparaciones distintas. Recetas más rápidas de ejecutar.',
   mas_fibra:     'Agregar verduras, legumbres y granos integrales.',
 };
 
-// ── Prompt builder ────────────────────────────────────────────────────────────
+// ── Tweak block builder ──────────────────────────────────────────────────────
 
 function summarizePreviousPlan(plan) {
   if (!plan) return '';
@@ -83,16 +84,17 @@ Reglas del ajuste:
 `;
 }
 
+// ── Prompt builder ────────────────────────────────────────────────────────────
+
 function buildMealPrepPrompt(params, { profileStr, locale, guardrail, superStr }, previousPlan = null) {
   const restrictions = [guardrail, superStr].filter(Boolean).join('\n') || 'Ninguna';
-  const dias = params.dias || 3;
-  const modeGuidance = MODE_GUIDANCE[params.mode] || MODE_GUIDANCE.rapido;
+  const intentGuidance = INTENT_GUIDANCE[params.intent] || INTENT_GUIDANCE.inspirame;
   const tweakBlock = buildTweakBlock(params, previousPlan);
 
   return `${locale}
 Actúa como un asistente que toma decisiones por el usuario y resuelve su alimentación sin esfuerzo.
 
-Objetivo: Generar UN plan de meal prep para ${dias} días que minimice esfuerzo, reutilice ingredientes y sea fácil de ejecutar en la vida real, en una sola sesión de cocina (máximo 1–2 horas).
+Objetivo: Generar UN plan de meal prep para ${PLAN_DAYS} días que minimice esfuerzo, reutilice ingredientes y sea fácil de ejecutar en una sola sesión de cocina (máximo 1–2 horas).
 
 Reglas clave:
 - SIEMPRE entrega UNA sola propuesta (nunca múltiples opciones)
@@ -101,6 +103,7 @@ Reglas clave:
 - PRIORIZA reutilización de ingredientes (cocinar una vez, usar varias veces)
 - TODO debe respetar ESTRICTAMENTE las restricciones del usuario (ej: kosher)
 - NO incluyas marcas ni productos comerciales
+- NUNCA incluyas ingredientes que el usuario quiera evitar (ver "Evitar:" en preferencias). Reemplázalos automáticamente sin mencionarlo.
 - EVITA ingredientes caros o difíciles a menos que el contexto lo justifique
 - Evita ingredientes que se usen solo una vez
 - Si algún ingrediente no cumple restricciones, reemplázalo automáticamente sin mencionarlo
@@ -114,41 +117,40 @@ Nivel de esfuerzo: mínimo
 
 ## DIRECTRIZ INTERNA (no mencionar al usuario en la respuesta)
 
-${modeGuidance}
+${intentGuidance}
 ${tweakBlock}
 ## INSTRUCCIONES
 
-1. Genera UN plan para ${dias} días
+1. Genera UN plan para ${PLAN_DAYS} días (no preguntes la duración)
 2. Usa la MENOR cantidad de ingredientes posible
 3. Reutiliza preparaciones (ej: cocinar pollo una vez, usarlo en varias comidas)
 4. Evita ingredientes que se usen solo una vez
 5. Mantén recetas simples (máx 5 pasos cada una)
 6. El plan debe poder cocinarse en una sola sesión (máx 1–2 h)
-7. Asegura coherencia nutricional según el objetivo del usuario
-8. Ajusta todo según la directriz interna
-9. NO menciones modos, etiquetas ni explicaciones del estilo del plan
-10. SOLO JSON, sin texto adicional
+7. Asegura coherencia nutricional según la directriz interna
+8. NO menciones intenciones, modos, etiquetas ni explicaciones del estilo del plan
+9. SOLO JSON, sin texto adicional
 
 ## CAMPOS OBLIGATORIOS DEL JSON
 
-- "title": nombre del plan (corto, claro, sin etiquetas de modo)
-- "description": 1 línea explicando por qué este plan es ideal (simple y directo, sin mencionar el modo)
+- "title": nombre del plan (corto, claro, sin etiquetas de modo o intención)
+- "description": 1 línea explicando por qué este plan es ideal (simple y directo)
 - "days": array con UNA comida principal por día, cada una con ingredientes y pasos breves
 - "shopping_list": lista total consolidada, sin duplicados, organizada de forma simple
-- "prep_plan": pasos de batch cooking, claros, cortos y numerados, enfocados en cocinar todo en el menor tiempo posible
+- "prep_plan": pasos de batch cooking, claros, cortos y numerados
 
 ## FORMATO DE RESPUESTA (JSON OBLIGATORIO)
 
-{"title":"","description":"Por qué este plan es ideal (1 línea)","total_days":${dias},"total_time_minutes":0,"days":[{"day":1,"meal":"","ingredients":[{"name":"","amount":""}],"steps":["Paso 1"]}],"shopping_list":[{"name":"","amount":""}],"prep_plan":["Paso 1 batch cooking"],"storage":{"containers":0,"instructions":["instrucción"],"duration_days":${dias}},"nutrition_summary":{"daily_calories":0,"daily_protein":0},"tip":"1 sugerencia útil"}`;
+{"title":"","description":"Por qué este plan es ideal (1 línea)","total_days":${PLAN_DAYS},"total_time_minutes":0,"days":[{"day":1,"meal":"","ingredients":[{"name":"","amount":""}],"steps":["Paso 1"]}],"shopping_list":[{"name":"","amount":""}],"prep_plan":["Paso 1 batch cooking"],"storage":{"containers":0,"instructions":["instrucción"],"duration_days":${PLAN_DAYS}},"nutrition_summary":{"daily_calories":0,"daily_protein":0},"tip":"1 sugerencia útil"}`;
 }
 
 // ── Normalize plan from Gemini ────────────────────────────────────────────────
 
-function normalizePlan(raw, dias) {
+function normalizePlan(raw) {
   return {
     title: raw.title || 'Plan de meal prep',
     description: raw.description || '',
-    total_days: raw.total_days || Number(dias) || 3,
+    total_days: raw.total_days || PLAN_DAYS,
     total_time_minutes: raw.total_time_minutes || 0,
     days: Array.isArray(raw.days) ? raw.days.map((d, i) => ({
       day: d.day ?? i + 1,
@@ -167,20 +169,18 @@ function normalizePlan(raw, dias) {
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * useMealPrep — generates ONE decisive meal prep plan per params combination.
+ * useMealPrep — generates ONE decisive 3-day meal prep plan per intent.
  *
  * - generate(params, { previousPlan? }) → Promise<Plan | null>
- * - getPlan(params)                     → Plan | null  (cached result, base only)
+ * - getPlan(params)                     → Plan | null  (cached, base only)
  * - isLoading(params)                   → boolean
  * - getError(params)                    → string | null
  *
  * Params shape:
- *   { dias: string,
- *     mode: 'alto_proteina'|'vegetariano'|'economico'|'alto_en_fibra'|'rapido',
- *     change_type?: 'mas_economico'|'mas_proteina'|'sin_carne'|'mas_rapido'|'mas_fibra' }
+ *   { intent: 'inspirame'|'proteico'|'liviano'|'dulce'|'economico'|'snack',
+ *     change_type?: 'mas_simple'|'mas_economico'|'mas_proteina'|'sin_carne'|'mas_fibra' }
  *
- * When change_type + previousPlan are provided, the model adjusts the previous
- * plan in that direction. Tweaks are NOT cached (they depend on the input plan).
+ * When change_type + previousPlan are both provided, it's a tweak (not cached).
  */
 export function useMealPrep() {
   const [plansMap, setPlansMap] = useState({});
@@ -197,7 +197,6 @@ export function useMealPrep() {
 
     if (activeKeys.has(key)) return null;
 
-    // TTL cache hit → no API call (only for base generations, never for tweaks)
     if (!isTweak) {
       const hit = cache.getCached(key);
       if (hit) {
@@ -233,14 +232,12 @@ export function useMealPrep() {
       try { parsed = JSON.parse(extractJSON(rawText)); }
       catch { throw new Error('Respuesta inesperada — intenta de nuevo'); }
 
-      // Support both { plan: {...} } wrapper and direct object
       const raw = parsed?.plan ?? parsed;
       if (!raw?.title && !Array.isArray(raw?.days)) {
         throw new Error('No se generó plan — intenta de nuevo');
       }
 
-      const plan = normalizePlan(raw, params.dias);
-      // Only persist base plans — tweaks are transient and depend on a specific input
+      const plan = normalizePlan(raw);
       if (!isTweak) cache.setCache(key, plan);
       setPlansMap(m => ({ ...m, [key]: plan }));
       return plan;

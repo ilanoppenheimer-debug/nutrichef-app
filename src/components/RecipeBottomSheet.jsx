@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import RecipeCard from './RecipeCard.jsx';
+import TweakBar, { COOKING_TWEAKS } from './TweakBar.jsx';
 import { useBottomSheet } from '../hooks/useBottomSheet.js';
 
 /**
@@ -19,8 +20,10 @@ import { useBottomSheet } from '../hooks/useBottomSheet.js';
  *   recipe          — recipe object; null = closed
  *   onClose         — called after the closing animation completes
  *   onRecipeChange  — forwarded to RecipeCard (AI adjustments)
+ *   onTweak         — (changeType) => void  optional, enables tweak chip bar
+ *   tweakingType    — currently in-flight tweak type (loading state)
  */
-export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange }) {
+export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange, onTweak, tweakingType }) {
   const bs = useBottomSheet({ onClosed: onClose });
 
   // Sync recipe prop → open/close the sheet
@@ -90,7 +93,19 @@ export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange }) {
             {/* Keep RecipeCard mounted while bs.mounted (even if recipe prop
                 changes to null during the exit animation) */}
             {recipe && (
-              <RecipeCard recipe={recipe} onRecipeChange={onRecipeChange} />
+              <>
+                {onTweak && (
+                  <div className="px-4 pt-2">
+                    <TweakBar
+                      options={COOKING_TWEAKS}
+                      onTweak={onTweak}
+                      tweakingType={tweakingType}
+                      label="Ajustar receta"
+                    />
+                  </div>
+                )}
+                <RecipeCard recipe={recipe} onRecipeChange={onRecipeChange} />
+              </>
             )}
           </div>
         </div>
@@ -128,7 +143,19 @@ export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange }) {
 
           <div className="flex-1 overflow-y-auto overscroll-contain">
             {recipe && (
-              <RecipeCard recipe={recipe} onRecipeChange={onRecipeChange} />
+              <>
+                {onTweak && (
+                  <div className="px-4 pt-4">
+                    <TweakBar
+                      options={COOKING_TWEAKS}
+                      onTweak={onTweak}
+                      tweakingType={tweakingType}
+                      label="Ajustar receta"
+                    />
+                  </div>
+                )}
+                <RecipeCard recipe={recipe} onRecipeChange={onRecipeChange} />
+              </>
             )}
           </div>
         </div>

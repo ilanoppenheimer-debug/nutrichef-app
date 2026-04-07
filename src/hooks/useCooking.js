@@ -12,7 +12,7 @@ import {
 // ── Stable key per mode + params + profile slice ─────────────────────────────
 
 function makeKey(mode, params, profileSlice) {
-  return JSON.stringify({ mode, params, p: profileSlice });
+  return JSON.stringify({ v: 2, mode, params, p: profileSlice });
 }
 
 // ── Parse raw amount string → {cantidad, unidad} ──────────────────────────────
@@ -61,7 +61,7 @@ function normalizeCookingRecipe(r) {
   };
 }
 
-// ── Extract first JSON object/array from a string (handles markdown wrappers) ─
+// ── Extract first JSON object/array from a string ─────────────────────────────
 
 function extractJSON(text) {
   const start = text.indexOf('{');
@@ -70,56 +70,123 @@ function extractJSON(text) {
   return text.slice(start, end + 1);
 }
 
+// ── Intent → silent guidance for the model (never named to the user) ─────────
+
+const INTENT_GUIDANCE = {
+  inspirame: 'Sorprende al usuario con algo coherente al momento del día. Prioriza accesibilidad.',
+  proteico:  'Maximiza proteína por porción. Carnes magras, huevos, legumbres o lácteos.',
+  liviano:   'Bajo en calorías y fácil de digerir. Verduras, ensaladas, proteínas magras.',
+  dulce:     'Postre o snack dulce simple, ingredientes accesibles, porción razonable.',
+  economico: 'Ingredientes baratos: huevo, legumbres, arroz, verduras de estación. Evita carnes caras.',
+  snack:     'Algo pequeño y rápido entre comidas. Mínimo esfuerzo.',
+};
+
+// ── Time of day → silent meal-type inference ─────────────────────────────────
+
+const TIME_GUIDANCE = {
+  manana:      'Es la mañana del usuario. Sugiere algo apropiado para desayuno.',
+  mediodia:    'Es el mediodía. Sugiere comida principal/almuerzo.',
+  tarde:       'Es la tarde. Sugiere merienda o snack ligero.',
+  noche:       'Es la noche. Sugiere algo para cena (usualmente más liviano y rápido).',
+  noche_tarde: 'Es muy tarde en la noche. Sugiere algo ligero, simple y rápido.',
+};
+
+// ── Directed-change guidance for cooking tweaks ──────────────────────────────
+
+export const COOKING_CHANGE_GUIDANCE = {
+  mas_simple:    'Reducir pasos e ingredientes. Hacerla aún más simple y rápida de ejecutar.',
+  mas_economico: 'Reemplazar ingredientes caros por opciones baratas (huevo, legumbres, arroz).',
+  mas_proteina:  'Aumentar densidad de proteína (huevo, pollo, legumbres, lácteos).',
+  sin_carne:     'Eliminar todas las carnes y pescados. Usar legumbres, huevo y lácteos si las preferencias lo permiten.',
+  mas_fibra:     'Agregar verduras, legumbres o granos integrales para subir la fibra.',
+};
+
+// ── Tweak block builder ──────────────────────────────────────────────────────
+
+function summarizePreviousRecipe(recipe) {
+  if (!recipe) return '';
+  const ingredients = (recipe.ingredients || [])
+    .map(i => i.nombre)
+    .filter(Boolean)
+    .slice(0, 10)
+    .join(', ');
+  return `- Título: ${recipe.title}\n- Ingredientes: ${ingredients}`;
+}
+
+function buildTweakBlock(changeType, previousRecipe) {
+  if (!changeType || !previousRecipe) return '';
+  const guidance = COOKING_CHANGE_GUIDANCE[changeType] || '';
+  return `
+
+## AJUSTE DIRIGIDO (instrucción interna, NO mencionar al usuario)
+
+Receta actual del usuario:
+${summarizePreviousRecipe(previousRecipe)}
+
+Tipo de ajuste: ${changeType}
+
+Guía:
+${guidance}
+
+Reglas del ajuste:
+- Ajusta la receta en esa dirección manteniendo simplicidad
+- Preserva lo que sea coherente con el ajuste
+- NO rehagas todo innecesariamente
+- NO menciones que estás ajustando una receta previa
+- El resultado debe parecer una receta natural y fresca, no una "versión modificada"
+`;
+}
+
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
-function buildPrompt(mode, params, { profileStr, locale, guardrail, superStr }) {
+function buildPrompt(mode, params, { profileStr, locale, guardrail, superStr }, previousRecipe = null) {
   const restrictions = [guardrail, superStr].filter(Boolean).join('\n') || 'Ninguna';
-  const tipoLine = params.tipo ? `\nIntención del usuario: quiere algo ${params.tipo}.` : '';
+  const intentGuidance = INTENT_GUIDANCE[params.intent] || INTENT_GUIDANCE.inspirame;
+  const timeGuidance = TIME_GUIDANCE[params.time_of_day] || TIME_GUIDANCE.mediodia;
+  const tweakBlock = buildTweakBlock(params.change_type, previousRecipe);
 
-  let goalLine, timeLine, inputsBlock;
-
+  let inputsBlock;
   if (mode === 'cookNow') {
-    timeLine = params.tiempo || 'flexible';
-    goalLine = params.objetivo || 'una receta práctica y nutritiva';
-    inputsBlock = `Dificultad deseada: ${params.dificultad}`;
+    inputsBlock = '';
   } else if (mode === 'ingredients') {
-    timeLine = 'flexible';
-    goalLine = 'aprovechar los ingredientes disponibles';
-    inputsBlock = `Ingredientes disponibles: ${params.ingredientes}\nUsa SOLO estos ingredientes (más básicos de despensa como sal, aceite, especias).`;
+    inputsBlock = `\nIngredientes disponibles: ${params.ingredientes}\nUsa SOLO estos ingredientes (más básicos de despensa: sal, aceite, especias). Minimiza ingredientes adicionales.`;
   } else {
     throw new Error(`useCooking: modo desconocido "${mode}"`);
   }
 
   return `${locale}
-Actúa como un asistente que NO da opciones, sino que toma decisiones por el usuario.
+Actúa como un asistente que toma decisiones por el usuario y resuelve qué cocinar sin esfuerzo.
 
-Objetivo: Entregar UNA receta clara, coherente y lista para ejecutar, minimizando cualquier esfuerzo mental.
+Objetivo: Entregar UNA receta clara y ejecutable, minimizando cualquier esfuerzo mental.
 
 Reglas clave:
-- NO entregues múltiples opciones
-- NO sugieras alternativas innecesarias
-- NO incluyas productos, marcas ni recomendaciones comerciales
-- TODO debe ser directamente útil para cocinar
-- Si algún ingrediente no cumple con las restricciones del usuario, reemplázalo automáticamente por una alternativa válida sin mencionarlo
+- SIEMPRE entrega UNA sola solución (nunca múltiples opciones)
+- TODO debe ser simple, coherente y accionable
+- Evita ruido, explicaciones largas o información innecesaria
+- NO incluyas marcas ni productos comerciales
+- NUNCA incluyas ingredientes que el usuario quiera evitar (ver "Evitar:" en preferencias). Reemplázalos automáticamente sin mencionarlo.
+- Si algún ingrediente no cumple con las restricciones, reemplázalo automáticamente sin mencionarlo
 
 ## CONTEXTO DEL USUARIO
 
 Preferencias: ${profileStr}
-Restricciones dietarias: ${restrictions}
-Objetivo: ${goalLine}
-Tiempo disponible: ${timeLine}
-${inputsBlock}${tipoLine}
+Restricciones dietarias: ${restrictions}${inputsBlock}
 
+## DIRECTRIZ INTERNA (no mencionar al usuario)
+
+Intención: ${intentGuidance}
+Momento del día: ${timeGuidance}
+Infiere el tipo de comida apropiado (desayuno / almuerzo / merienda / cena / snack) según la hora y la intención. NO preguntes ni expliques esta inferencia, solo aplícala.
+${tweakBlock}
 ## INSTRUCCIONES
 
-1. Genera UNA receta óptima basada en el contexto
-2. Asegúrate de que TODOS los ingredientes respeten las restricciones (ej: kosher = 100% compatible)
-3. Prioriza simplicidad, rapidez y coherencia
-4. Evita ingredientes difíciles o innecesarios
-5. Máximo 6–8 ingredientes
-6. Máximo 5 pasos de preparación, lenguaje simple
-7. Incluye 1 sugerencia útil (tip)
-8. SOLO JSON, sin texto adicional
+1. Genera UNA receta óptima
+2. Asegúrate de que TODOS los ingredientes respeten las restricciones
+3. Prioriza simplicidad y coherencia
+4. Máximo 6–8 ingredientes
+5. Máximo 5 pasos de preparación, lenguaje directo
+6. Incluye 1 sugerencia útil (tip)
+7. SOLO JSON, sin texto adicional
 
 ## FORMATO DE RESPUESTA (JSON OBLIGATORIO)
 
@@ -129,33 +196,42 @@ ${inputsBlock}${tipoLine}
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * useCooking — generates a single decisive recipe per mode/params combination.
+ * useCooking — generates ONE decisive recipe per mode/params combination.
  *
- * - generate(mode, params)   → Promise<Recipe | null>
- * - getRecipe(mode, params)  → Recipe | null  (cached result for these params)
- * - isLoading(mode, params)  → boolean
- * - getError(mode, params)   → string | null
+ * - generate(mode, params, { previousRecipe? }) → Promise<Recipe | null>
+ * - getRecipe(mode, params)                     → Recipe | null  (cached, base only)
+ * - isLoading(mode, params)                     → boolean
+ * - getError(mode, params)                      → string | null
+ *
+ * Params shape:
+ *   { intent: 'inspirame'|'proteico'|'liviano'|'dulce'|'economico'|'snack',
+ *     time_of_day: 'manana'|'mediodia'|'tarde'|'noche'|'noche_tarde',
+ *     ingredientes?: string,         // ingredients mode only
+ *     change_type?: ... }            // tweak mode
+ *
+ * When change_type + previousRecipe are provided, it's a tweak (not cached).
  */
 export function useCooking() {
-  const [options, setOptions] = useState({});   // key → Recipe
+  const [options, setOptions] = useState({});
   const [activeKeys, setActiveKeys] = useState(new Set());
   const [errors, setErrors] = useState({});
   const { profile, saveGeneratedRecipe } = useAppState();
-  const cache = useRecipeCache(); // TTL-based cache (1h default)
+  const cache = useRecipeCache();
 
   const _makeKey = (mode, params) => makeKey(mode, params, compactProfile(profile).slice(0, 80));
 
-  const generate = async (mode, params) => {
+  const generate = async (mode, params, { previousRecipe } = {}) => {
     const key = _makeKey(mode, params);
+    const isTweak = !!params.change_type && !!previousRecipe;
 
-    // Deduplicate in-flight requests for the same key
     if (activeKeys.has(key)) return null;
 
-    // TTL cache hit → no API call
-    const hit = cache.getCached(key);
-    if (hit) {
-      setOptions(o => ({ ...o, [key]: hit }));
-      return hit;
+    if (!isTweak) {
+      const hit = cache.getCached(key);
+      if (hit) {
+        setOptions(o => ({ ...o, [key]: hit }));
+        return hit;
+      }
     }
 
     setActiveKeys(s => new Set([...s, key]));
@@ -167,7 +243,12 @@ export function useCooking() {
       const guardrail = buildAbsoluteGuardrail(profile);
       const superStr = buildSupermarketInstruction(profile);
 
-      const prompt = buildPrompt(mode, params, { profileStr, locale, guardrail, superStr });
+      const prompt = buildPrompt(
+        mode,
+        params,
+        { profileStr, locale, guardrail, superStr },
+        isTweak ? previousRecipe : null
+      );
 
       const payload = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -182,16 +263,13 @@ export function useCooking() {
       try { parsed = JSON.parse(extractJSON(rawText)); }
       catch { throw new Error('Respuesta inesperada — intenta de nuevo'); }
 
-      // Single recipe — support both { recipe: {...} } wrapper and direct object
       const raw = parsed?.recipe ?? parsed;
       if (!raw?.title) throw new Error('No se generó receta — intenta de nuevo');
 
       const recipe = normalizeCookingRecipe(raw);
 
-      // Persist with TTL
-      cache.setCache(key, recipe);
+      if (!isTweak) cache.setCache(key, recipe);
 
-      // Add to history (fire-and-forget)
       if (saveGeneratedRecipe) saveGeneratedRecipe(recipe).catch(() => {});
 
       setOptions(o => ({ ...o, [key]: recipe }));
