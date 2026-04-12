@@ -1,4 +1,4 @@
-import { readStoredJson, writeStoredJson } from '../lib/gemini.js';
+import { readStoredJson, writeStoredJson } from '@/services/gemini.js';
 
 /**
  * TTL-based localStorage cache for recipe generation results.

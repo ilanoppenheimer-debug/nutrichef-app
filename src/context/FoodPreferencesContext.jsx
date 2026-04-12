@@ -10,7 +10,7 @@ import {
   mergeLegacyProfileIntoFoodPreferences,
   normalizeFoodPreferences,
   normalizeRestriction,
-} from '../lib/foodPreferences.js';
+} from '@/utils/foodPreferences.js';
 
 export const FoodPreferencesContext = createContext(null);
 

@@ -1,0 +1,43 @@
+---
+description: Convenciones NutriChef (React, servidor Node, Vitest, a11y)
+globs:
+  - src/**/*.{js,jsx}
+  - server/**/*.js
+alwaysApply: false
+---
+
+# NutriChef — reglas de proyecto
+
+## Stack
+
+- Cliente: React 19, Vite, React Router, Tailwind, Zustand.
+- Servidor: Node, HTTP nativo (`server/`), proxy a Gemini; `npm run dev` levanta Vite + servidor.
+- Datos: Firebase (Firestore + Auth); modo local con `localStorage`.
+
+## Imports
+
+- Usar el alias `@/` para código bajo `src/` (ej. `@/services/gemini.js`, `@/utils/recipeScaling.js`).
+
+## Capas
+
+- **pages**: orquestación de pantalla, poca lógica de negocio; preferir hooks en `src/hooks/`.
+- **services**: red, Firebase, `gemini.js` (incluye helpers de caché/localStorage ligados al cliente).
+- **utils**: funciones puras, datos estáticos, escalado, preferencias alimentarias sin I/O de red.
+
+## Tests
+
+- Añadir o actualizar tests con **Vitest** para lógica nueva en `utils` / `services` cuando sea razonable.
+- Comandos: `npm run test:run` antes de entregar cambios que toquen esa lógica.
+
+## Accesibilidad y UX
+
+- Controles interactivos con `aria-label` donde el texto visible no baste.
+- Mantener contraste suficiente (Tailwind slate/emerald; modo oscuro coherente).
+
+## Seguridad
+
+- No commitear API keys; variables en `.env` y servidor.
+
+## Commits
+
+- Mensajes claros; preferir Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`).

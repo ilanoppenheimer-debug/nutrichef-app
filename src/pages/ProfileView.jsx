@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, ChevronDown, ChevronUp, Dumbbell, HeartPulse, Lock, Moon, PiggyBank, RefreshCw, ShoppingBag, Star, Target, Trophy } from 'lucide-react';
 import { useProfileStore } from '../stores/useProfileStore.js';
-import { calculateTDEE, getSupermarketsForCountry } from '../lib/gemini.js';
-import { mergeUniqueTerms } from '../lib/ingredientIntelligence.js';
+import { calculateTDEE, getSupermarketsForCountry } from '@/services/gemini.js';
+import { mergeUniqueTerms } from '@/utils/ingredientIntelligence.js';
 
 const SPORT_OPTIONS = ['Ninguno', 'Cardio', 'Fuerza/Powerlifting', 'Crossfit', 'HIIT', 'Deportes de equipo'];
 const DIETARY_STYLES = ['Ninguna', 'Vegetariana', 'Vegana', 'Pescatariana', 'Keto', 'Paleo'];

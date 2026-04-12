@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useCollectionsStore } from '../stores/useCollectionsStore.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { callGeminiAPI } from './gemini.js';
+import { callGeminiAPI } from '@/services/gemini.js';
 
 // Campos que indican que el resultado es una receta completa (no sugerencias ni planes)
 const RECIPE_FIELDS = ['title', 'ingredients', 'steps', 'macros'];

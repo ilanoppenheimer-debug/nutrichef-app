@@ -6,7 +6,7 @@ import {
   linkWithPopup,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase.js';
+import { auth, googleProvider } from '@/services/firebase.js';
 
 // Sentinel para distinguir estados
 // undefined  = Firebase aún verificando

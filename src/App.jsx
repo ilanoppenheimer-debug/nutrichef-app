@@ -10,17 +10,17 @@ import { useProfileStore } from './stores/useProfileStore.js';
 import { useSyncStore } from './stores/useSyncStore.js';
 
 const AppLayout = lazy(() => import('./components/layout/AppLayout.jsx'));
-const CookingHome = lazy(() => import('./views/CookingHome.jsx'));
-const GeneratorView = lazy(() => import('./views/GeneratorView.jsx'));
-const ExploreView = lazy(() => import('./views/ExploreView.jsx'));
-const MealPlanView = lazy(() => import('./views/MealPlanView.jsx'));
-const ProfileView = lazy(() => import('./views/ProfileView.jsx'));
-const SettingsView = lazy(() => import('./views/SettingsView.jsx'));
-const SavedView = lazy(() => import('./views/SavedView.jsx'));
-const AddRecipeView = lazy(() => import('./views/AddRecipeView.jsx'));
-const FoodPreferencesScreen = lazy(() => import('./views/FoodPreferencesScreen.jsx'));
-const LoginView = lazy(() => import('./views/LoginView.jsx'));
-const OnboardingView = lazy(() => import('./views/OnboardingView.jsx'));
+const CookingHome = lazy(() => import('./pages/CookingHome.jsx'));
+const GeneratorView = lazy(() => import('./pages/GeneratorView.jsx'));
+const ExploreView = lazy(() => import('./pages/ExploreView.jsx'));
+const MealPlanView = lazy(() => import('./pages/MealPlanView.jsx'));
+const ProfileView = lazy(() => import('./pages/ProfileView.jsx'));
+const SettingsView = lazy(() => import('./pages/SettingsView.jsx'));
+const SavedView = lazy(() => import('./pages/SavedView.jsx'));
+const AddRecipeView = lazy(() => import('./pages/AddRecipeView.jsx'));
+const FoodPreferencesScreen = lazy(() => import('./pages/FoodPreferencesScreen.jsx'));
+const LoginView = lazy(() => import('./pages/LoginView.jsx'));
+const OnboardingView = lazy(() => import('./pages/OnboardingView.jsx'));
 
 function SplashScreen() {
   return (

@@ -13,8 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import RecipeCard from '../RecipeCard.jsx';
-import { getAllergyTerms, normalizeIngredientText } from '../../lib/ingredientIntelligence.js';
-import { parseServingsCount, scaleNutritionLabel } from '../../lib/recipeScaling.js';
+import { getAllergyTerms, normalizeIngredientText } from '@/utils/ingredientIntelligence.js';
+import { parseServingsCount, scaleNutritionLabel } from '@/utils/recipeScaling.js';
 
 const MEAL_THEMES = {
   desayuno: {

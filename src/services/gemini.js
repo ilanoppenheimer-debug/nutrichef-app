@@ -1,10 +1,10 @@
-import { buildAbsoluteGuardrail, buildBrandContext } from './brandDatabase.js';
+import { buildAbsoluteGuardrail } from '@/utils/brandDatabase.js';
 import { fetchWithAuth } from './authUtils.js';
-import { buildFoodPreferencePromptBlock, getFoodPreferenceCacheFragment, getFoodPreferenceSummaryLines, withFoodPreferences } from './foodPreferences.js';
-import { normalizeRecipePayload } from './ingredientIntelligence.js';
-export { buildAbsoluteGuardrail } from './brandDatabase.js';
-export { buildFoodPreferencePromptBlock } from './foodPreferences.js';
-export { normalizeRecipePayload } from './ingredientIntelligence.js';
+import { buildFoodPreferencePromptBlock, getFoodPreferenceCacheFragment, getFoodPreferenceSummaryLines, withFoodPreferences } from '@/utils/foodPreferences.js';
+import { normalizeRecipePayload } from '@/utils/ingredientIntelligence.js';
+export { buildAbsoluteGuardrail } from '@/utils/brandDatabase.js';
+export { buildFoodPreferencePromptBlock } from '@/utils/foodPreferences.js';
+export { normalizeRecipePayload } from '@/utils/ingredientIntelligence.js';
 
 export const GEMINI_API_ENDPOINT = '/api/gemini';
 export const GEMINI_COOLDOWN_KEY = 'nutrichef_gemini_cooldown_until';

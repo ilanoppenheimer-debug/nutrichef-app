@@ -5,8 +5,8 @@ import { useCollectionsStore } from '../stores/useCollectionsStore.js';
 import { useFoodPreferences } from '../hooks/useFoodPreferences.js';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/paths.js';
-import { buildAbsoluteGuardrail, buildFoodPreferencePromptBlock, compactProfile, normalizeRecipePayload } from '../lib/gemini.js';
-import { withFoodPreferences } from '../lib/foodPreferences.js';
+import { buildAbsoluteGuardrail, buildFoodPreferencePromptBlock, compactProfile, normalizeRecipePayload } from '@/services/gemini.js';
+import { withFoodPreferences } from '@/utils/foodPreferences.js';
 
 
 // Ícono SVG de Instagram (sin dependencias externas)

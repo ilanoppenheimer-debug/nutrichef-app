@@ -16,9 +16,9 @@ import {
   EXPLORE_CACHE_KEY, GENERATOR_RECIPE_CACHE_KEY,
   RECIPE_JSON_SCHEMA,
   SEARCH_SUGGESTIONS_RESPONSE_SCHEMA,
-} from '../lib/gemini.js';
-import { withFoodPreferences } from '../lib/foodPreferences.js';
-import { searchLocalRecipes, getFeaturedRecipes, POPULAR_RECIPES } from '../lib/localRecipes.js';
+} from '@/services/gemini.js';
+import { withFoodPreferences } from '@/utils/foodPreferences.js';
+import { searchLocalRecipes, getFeaturedRecipes, POPULAR_RECIPES } from '@/utils/localRecipes.js';
 
 // Recetas populares para mostrar en el estado vacío (sin búsqueda)
 const QUICK_PICKS = POPULAR_RECIPES.slice(0, 6).map(r => ({

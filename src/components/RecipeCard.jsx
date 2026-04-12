@@ -22,10 +22,10 @@ import {
 } from 'lucide-react';
 import { useProfileStore } from '../stores/useProfileStore.js';
 import { useCollectionsStore } from '../stores/useCollectionsStore.js';
-import { refineRecipe, extractDislikedIngredient } from '../lib/gemini.js';
-import { BRAND_LABELS, getRelevantBrandCategories, SAFE_BRANDS, normalizeAndFilterBrandsForProfile } from '../lib/brandDatabase.js';
-import { annotateRecipeIngredients, normalizeIngredientEntry } from '../lib/ingredientIntelligence.js';
-import { clampServings, parseServingsCount, scaleNutritionLabel, scaleQuantityText } from '../lib/recipeScaling.js';
+import { refineRecipe, extractDislikedIngredient } from '@/services/gemini.js';
+import { BRAND_LABELS, getRelevantBrandCategories, SAFE_BRANDS, normalizeAndFilterBrandsForProfile } from '@/utils/brandDatabase.js';
+import { annotateRecipeIngredients, normalizeIngredientEntry } from '@/utils/ingredientIntelligence.js';
+import { clampServings, parseServingsCount, scaleNutritionLabel, scaleQuantityText } from '@/utils/recipeScaling.js';
 import RecipeHeaderCompact from './RecipeHeaderCompact.jsx';
 import StickyCTA from './StickyCTA.jsx';
 

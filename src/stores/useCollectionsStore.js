@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase.js';
+import { db } from '@/services/firebase.js';
 
 export const useCollectionsStore = create(subscribeWithSelector((set, get) => ({
   favoriteRecipes: [],

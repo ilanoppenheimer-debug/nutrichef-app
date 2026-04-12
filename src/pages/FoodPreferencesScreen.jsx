@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Plus, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { FOOD_DIET_OPTIONS } from '../lib/foodPreferences.js';
+import { FOOD_DIET_OPTIONS } from '@/utils/foodPreferences.js';
 import { useFoodPreferences } from '../hooks/useFoodPreferences.js';
 
 export default function FoodPreferencesScreen() {

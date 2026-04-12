@@ -34,8 +34,8 @@ import {
   SHOPPING_LIST_RESPONSE_SCHEMA,
   readStoredJson,
   writeStoredJson,
-} from '../lib/gemini.js';
-import { clampServings, parseServingsCount } from '../lib/recipeScaling.js';
+} from '@/services/gemini.js';
+import { clampServings, parseServingsCount } from '@/utils/recipeScaling.js';
 
 function CollapsibleSection({
   title,

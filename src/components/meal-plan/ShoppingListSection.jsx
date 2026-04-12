@@ -1,7 +1,7 @@
 import { PiggyBank, RefreshCw, ShoppingCart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatCurrencyByCountry } from '../../lib/gemini.js';
-import { applyShoppingListSafetySwaps } from '../../lib/ingredientIntelligence.js';
+import { formatCurrencyByCountry } from '@/services/gemini.js';
+import { applyShoppingListSafetySwaps } from '@/utils/ingredientIntelligence.js';
 
 const AISLE_ORDER = [
   'Frutas y Verduras',

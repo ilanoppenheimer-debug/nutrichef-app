@@ -10,7 +10,7 @@ import {
   buildAbsoluteGuardrail,
   buildSupermarketInstruction,
   extractJSON,
-} from '../lib/gemini.js';
+} from '@/services/gemini.js';
 
 // ── Stable key per mode + params + profile slice ─────────────────────────────
 

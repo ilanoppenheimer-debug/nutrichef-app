@@ -26,8 +26,8 @@ import {
   TIME_OPTIONS,
   readStoredJson,
   writeStoredJson,
-} from '../lib/gemini.js';
-import { withFoodPreferences } from '../lib/foodPreferences.js';
+} from '@/services/gemini.js';
+import { withFoodPreferences } from '@/utils/foodPreferences.js';
 import { ROUTES } from '../routes/paths.js';
 
 // ─── Configuración del slider de complejidad ──────────────────────────────────

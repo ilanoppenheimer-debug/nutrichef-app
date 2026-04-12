@@ -3,9 +3,9 @@ import {
   collection, doc, getDoc, getDocs, setDoc,
   query, orderBy, limit,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase.js';
+import { db } from '@/services/firebase.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { readStoredJson, writeStoredJson } from '../lib/gemini.js';
+import { readStoredJson, writeStoredJson } from '@/services/gemini.js';
 import { useProfileStore, DEFAULT_PROFILE } from './useProfileStore.js';
 import { useCollectionsStore } from './useCollectionsStore.js';
 

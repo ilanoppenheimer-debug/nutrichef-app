@@ -8,7 +8,7 @@ import {
   buildAbsoluteGuardrail,
   buildSupermarketInstruction,
   extractJSON,
-} from '../lib/gemini.js';
+} from '@/services/gemini.js';
 
 // Meal prep plans are less volatile than single recipes — cache for 2 hours
 const MEAL_PREP_TTL = 2 * 60 * 60 * 1000;
