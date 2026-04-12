@@ -1,15 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src -type f \\\\\\(-name *.jsx -o -name *.js \\\\\\))",
-      "Bash(grep -r \"type.*Recipe\\\\|interface.*Recipe\\\\|interface.*Profile\\\\|interface.*Meal\" /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src --include=*.ts --include=*.tsx --include=*.jsx --include=*.js)",
-      "Bash(grep -n \"interface\\\\|type\\\\|class\" /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src/views/*.jsx)",
-      "Bash(ls -1 /c/Users/igopp/OneDrive/Escritorio/nutrichef-app/src/views/*.jsx)",
-      "Bash(xargs -I {} basename {})",
-      "Bash(npx vite:*)",
-      "Bash(npm install:*)",
-      "Bash(node -e \"console.log\\(require\\('./node_modules/zustand/package.json'\\).version\\)\")",
-      "Bash(node -e \"const z = require\\('zustand'\\); const s = require\\('zustand/middleware'\\); console.log\\(Object.keys\\(s\\).join\\(', '\\)\\)\")"
+      "Bash(du -sh /tmp/*)",
+      "Bash(find /tmp -name \"*.tmp\" -type f -delete)",
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)"
     ]
   }
 }

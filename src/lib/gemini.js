@@ -1,4 +1,4 @@
-import { buildAbsoluteGuardrail, buildBrandContext } from './brandDatabase.js';
+import { buildAbsoluteGuardrail } from './brandDatabase.js';
 import { fetchWithAuth } from './authUtils.js';
 import { buildFoodPreferencePromptBlock, getFoodPreferenceCacheFragment, getFoodPreferenceSummaryLines, withFoodPreferences } from './foodPreferences.js';
 import { normalizeRecipePayload } from './ingredientIntelligence.js';
@@ -14,6 +14,19 @@ export const GENERATOR_RECIPE_CACHE_KEY = 'nutrichef_generator_recipe_cache';
 export const EXPLORE_CACHE_KEY = 'nutrichef_explore_cache';
 export const MEALPLAN_CACHE_KEY = 'nutrichef_mealplan_cache';
 export const SHOPPING_CACHE_KEY = 'nutrichef_shopping_cache';
+
+// ── Prompt-injection defense ────────────────────────────────────────────────
+// Strips control sequences and caps length so user-supplied text cannot
+// override system instructions when interpolated into prompts.
+export function sanitizeUserInput(text, maxLength = 500) {
+  if (typeof text !== 'string') return '';
+  return text
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')  // strip control chars
+    .replace(/```/g, '')                                    // no fenced blocks
+    .slice(0, maxLength)
+    .trim();
+}
 
 // ── JSON extraction (shared by cooking/meal-prep hooks) ─────────────────────
 export function extractJSON(text) {

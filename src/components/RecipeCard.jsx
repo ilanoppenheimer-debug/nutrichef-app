@@ -4,7 +4,6 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronDown,
-  Heart,
   Info,
   MessageSquare,
   Minus,
@@ -14,9 +13,6 @@ import {
   Settings2,
   ShieldCheck,
   ShoppingBag,
-  Star,
-  ThumbsDown,
-  ThumbsUp,
   X,
   Zap,
 } from 'lucide-react';
@@ -28,6 +24,7 @@ import { annotateRecipeIngredients, normalizeIngredientEntry } from '../lib/ingr
 import { clampServings, parseServingsCount, scaleNutritionLabel, scaleQuantityText } from '../lib/recipeScaling.js';
 import RecipeHeaderCompact from './RecipeHeaderCompact.jsx';
 import StickyCTA from './StickyCTA.jsx';
+import { recordLike, recordDislike } from '../lib/learningEngine.js';
 
 function formatSafetyBadge(reason) {
   if (!reason) return 'Marca verificada';
@@ -285,7 +282,10 @@ function AdjustPanel({ recipe, onRefined, onClose, initialInstruction = '' }) {
   };
 
   const handleRememberDislike = (accept) => {
-    if (accept && detectedIngredient) addDislike(detectedIngredient);
+    if (accept && detectedIngredient) {
+      addDislike(detectedIngredient);
+      recordDislike(detectedIngredient, 0.5, true);
+    }
     setDetectedIngredient(null);
     setRememberAsked(true);
   };
@@ -401,9 +401,6 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
   const [chefQuestion, setChefQuestion] = useState('');
   const [chefAnswer, setChefAnswer] = useState('');
   const [asking, setAsking] = useState(false);
-  const [feedbackGiven, setFeedbackGiven] = useState(false);
-  const [feedbackType, setFeedbackType] = useState(null);
-  const [feedbackReason, setFeedbackReason] = useState('');
   const [refinedBadge, setRefinedBadge] = useState(false);
   const [selectedServings, setSelectedServings] = useState(parseServingsCount(initialRecipe?.servings || 1));
   const [openSections, setOpenSections] = useState({ ingredients: true, brands: false, steps: false, tips: false });
@@ -473,6 +470,11 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
     }
     setFavoriteRecipes([...(favoriteRecipes || []), recipe]);
     if (isInterested) setInterestedRecipes(interestedRecipes.filter(item => item.title !== recipe.title));
+    // Learning: record positive signals for recipe ingredients
+    (recipe.ingredients || []).forEach(ing => {
+      const name = ing.nombre || ing.name;
+      if (name && !ing.isDislike && !ing.allergyAlert) recordLike(name, 0.2);
+    });
   };
 
   const toggleInterested = () => {
@@ -514,11 +516,6 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
     }
   };
 
-  const submitFeedback = () => {
-    if (!feedbackReason.trim()) return;
-    setProfile(prev => ({ ...prev, learnedPreferences: [...prev.learnedPreferences, `${feedbackType === 'like' ? 'Le encantó' : 'Evitar'}: ${feedbackReason}`] }));
-    setFeedbackGiven(true);
-  };
 
   if (!recipe) return null;
 
@@ -701,41 +698,11 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
           </div>
         )}
 
-        {/* ⑦ Feedback — below fold, progressive */}
-        <div className="rounded-2xl border p-4" style={{ background: 'var(--c-primary-light)', borderColor: 'var(--c-primary-border)' }}>
-          <h4 className="mb-1 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--c-primary-text)' }}>
-            <RefreshCw size={13} /> ¿Ya la preparaste?
-          </h4>
-          <p className="mb-3 text-xs opacity-60" style={{ color: 'var(--c-primary-text)' }}>Tu opinión mejora las próximas recomendaciones.</p>
-          {!feedbackGiven ? (
-            !feedbackType ? (
-              <div className="flex gap-2">
-                <button onClick={() => setFeedbackType('like')} className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-green-200 bg-white py-2.5 text-xs font-medium text-green-700 transition-colors active:bg-green-50 dark:bg-gray-800 dark:text-green-400">
-                  <ThumbsUp size={16} /> Me encantó
-                </button>
-                <button onClick={() => setFeedbackType('dislike')} className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-red-200 bg-white py-2.5 text-xs font-medium text-red-600 transition-colors active:bg-red-50 dark:bg-gray-800 dark:text-red-400">
-                  <ThumbsDown size={16} /> No me gustó
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className={`text-xs font-bold ${feedbackType === 'like' ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
-                  {feedbackType === 'like' ? '¿Qué fue lo mejor?' : '¿Qué no te gustó?'}
-                </p>
-                <div className="flex gap-2">
-                  <input type="text" value={feedbackReason} onChange={e => setFeedbackReason(e.target.value)} onKeyDown={e => e.key === 'Enter' && submitFeedback()} placeholder={feedbackType === 'like' ? 'Ej: el toque de ajo...' : 'Ej: muy seco...'} className="flex-1 rounded-xl border bg-white p-2.5 text-xs outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                  <button onClick={submitFeedback} disabled={!feedbackReason.trim()} className={`rounded-xl px-3 text-xs font-bold text-white disabled:opacity-50 ${feedbackType === 'like' ? 'bg-green-600' : 'bg-red-600'}`}>✓</button>
-                  <button onClick={() => { setFeedbackType(null); setFeedbackReason(''); }} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 dark:border-gray-600 dark:bg-gray-800">
-                    <X size={14} />
-                  </button>
-                </div>
-              </div>
-            )
-          ) : (
-            <div className="flex items-center gap-2 rounded-xl bg-green-100 p-3 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              <CheckCircle2 size={13} /> ¡Guardado en tu perfil!
-            </div>
-          )}
+        {/* ⑦ Passive learning notice */}
+        <div className="rounded-2xl border border-slate-100 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/40 px-4 py-3">
+          <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
+            NutriChef aprende de tus ajustes y favoritos automáticamente.
+          </p>
         </div>
 
         {/* ⑧ Chef IA — below fold, power-user feature */}

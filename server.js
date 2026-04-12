@@ -14,7 +14,7 @@ loadEnvFile(envPath);
 const PORT = Number(process.env.PORT || 8787);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 console.log("====================================");
-console.log("🔑 CLAVE CARGADA EN EL SERVIDOR:", GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 15) + "..." : "NINGUNA");
+console.log("🔑 CLAVE CARGADA EN EL SERVIDOR:", GEMINI_API_KEY ? "OK" : "NINGUNA");
 console.log("====================================");
 const GEMINI_TEXT_MODELS = ['gemini-2.5-flash'];
 const GEMINI_VISION_MODELS = ['gemini-2.5-flash'];

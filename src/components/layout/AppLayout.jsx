@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, Calendar, ChefHat, Compass, LogOut, Settings, Utensils, User } from 'lucide-react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Bookmark, Calendar, ChefHat, LogOut, Settings, User } from 'lucide-react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../routes/paths.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import TipsWidget from '../TipsWidget.jsx';
 
 const DESKTOP_NAV_ITEMS = [
   { to: ROUTES.cook, label: 'Cocinar', icon: ChefHat },
-  { to: ROUTES.explore, label: 'Explorar', icon: Compass },
-  { to: ROUTES.saved, label: 'Guardados', icon: Bookmark },
   { to: ROUTES.plan, label: 'Plan', icon: Calendar },
+  { to: ROUTES.saved, label: 'Guardados', icon: Bookmark },
 ];
 
 const MOBILE_NAV_ITEMS = [
   { to: ROUTES.cook, label: 'Cocinar', icon: ChefHat },
-  { to: ROUTES.explore, label: 'Explorar', icon: Compass },
   { to: ROUTES.plan, label: 'Plan', icon: Calendar },
   { to: ROUTES.saved, label: 'Guardados', icon: Bookmark },
 ];
@@ -68,7 +66,6 @@ function AvatarMenu({ user, isLocalMode, onClose }) {
 
 export default function AppLayout() {
   const { user, isLocalMode } = useAuth();
-  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 

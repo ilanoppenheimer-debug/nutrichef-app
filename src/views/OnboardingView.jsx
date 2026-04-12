@@ -76,7 +76,7 @@ export default function OnboardingView() {
       medicalDisclaimerAccepted: true,
       acceptedAt: new Date().toISOString(),
     }));
-    navigate(ROUTES.create);
+    navigate(ROUTES.cook);
   };
 
   const renderStep = () => {

@@ -24,7 +24,7 @@ export const DEFAULT_PROFILE = {
 };
 
 export function isProfileComplete(profile) {
-  return Boolean(profile.weight && profile.height && profile.age && profile.goals);
+  return Boolean(profile.goals && profile.medicalDisclaimerAccepted);
 }
 
 export const useProfileStore = create(subscribeWithSelector((set) => ({

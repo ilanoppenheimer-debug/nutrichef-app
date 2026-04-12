@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { ChevronRight, Flame, Package, Plus, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, ChevronRight, Flame, Package, Plus, RefreshCw, ShoppingBag, Sparkles } from 'lucide-react';
 import RecipeBottomSheet from '../components/RecipeBottomSheet.jsx';
 import { MealPrepResultCard, MealPrepSheet } from '../components/MealPrepPlanCard.jsx';
 import { useCooking } from '../hooks/useCooking.js';
 import { useMealPrep } from '../hooks/useMealPrep.js';
+import { callGeminiVisionAPI } from '../lib/gemini.js';
 
 // ── Intent options (single source of truth) ──────────────────────────────────
 
@@ -121,6 +122,8 @@ export default function CookingHome() {
   // Ingredients input + progressive disclosure
   const [ingredientes, setIngredientes] = useState('');
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Currently displayed results — separate from the cache so iterative tweaks compound
   const [currentCookNowRecipe, setCurrentCookNowRecipe] = useState(null);
@@ -249,6 +252,30 @@ export default function CookingHome() {
     });
   };
 
+  // ── Camera scan → detect ingredients from photo ────────────────────────────
+
+  const handleImageScan = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Data = reader.result.split(',')[1];
+      setScanning(true);
+      try {
+        const prompt = `Analiza esta imagen. Si muestra ingredientes o alimentos, lista los ingredientes detectados separados por coma. Responde SOLO el texto de ingredientes, sin explicaciones.`;
+        const resultText = await callGeminiVisionAPI(prompt, base64Data, file.type);
+        const detectedText = resultText.trim().replace(/^["']|["']$/g, '');
+        if (detectedText) {
+          setIngredientes(prev => prev.trim() ? `${prev.trim()}, ${detectedText}` : detectedText);
+          setIngredientsExpanded(true);
+        }
+      } catch { /* silently degrade */ }
+      finally { setScanning(false); }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // reset input for re-scan
+  };
+
   // ── Loading / error helpers for the active sheet ───────────────────────────
 
   // Which surface owns viewingRecipe → wire its tweak handler to the sheet
@@ -346,14 +373,26 @@ export default function CookingHome() {
           </button>
         ) : (
           <>
-            <textarea
-              value={ingredientes}
-              onChange={e => setIngredientes(e.target.value)}
-              placeholder="Ej: pollo, arroz, zanahoria..."
-              rows={2}
-              className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none focus:outline-none focus:border-[--c-primary-border] transition-colors"
-              autoFocus={ingredientsExpanded && !ingredientes.trim()}
-            />
+            <div className="relative">
+              <textarea
+                value={ingredientes}
+                onChange={e => setIngredientes(e.target.value)}
+                placeholder="Ej: pollo, arroz, zanahoria..."
+                rows={2}
+                className="w-full px-4 py-3 pb-10 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none focus:outline-none focus:border-[--c-primary-border] transition-colors"
+                autoFocus={ingredientsExpanded && !ingredientes.trim()}
+              />
+              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageScan} />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={scanning}
+                className="absolute bottom-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-500 dark:text-slate-300 active:scale-95 transition-all"
+              >
+                {scanning ? <RefreshCw size={12} className="animate-spin" /> : <Camera size={12} />}
+                {scanning ? 'Escaneando...' : 'Escanear foto'}
+              </button>
+            </div>
 
             {/* Suggested chips for faster input */}
             <div className="flex flex-wrap gap-1.5">

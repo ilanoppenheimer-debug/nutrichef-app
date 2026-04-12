@@ -11,9 +11,7 @@ import { useSyncStore } from './stores/useSyncStore.js';
 
 const AppLayout = lazy(() => import('./components/layout/AppLayout.jsx'));
 const CookingHome = lazy(() => import('./views/CookingHome.jsx'));
-const GeneratorView = lazy(() => import('./views/GeneratorView.jsx'));
-const ExploreView = lazy(() => import('./views/ExploreView.jsx'));
-const MealPlanView = lazy(() => import('./views/MealPlanView.jsx'));
+const SimplePlanView = lazy(() => import('./views/SimplePlanView.jsx'));
 const ProfileView = lazy(() => import('./views/ProfileView.jsx'));
 const SettingsView = lazy(() => import('./views/SettingsView.jsx'));
 const SavedView = lazy(() => import('./views/SavedView.jsx'));
@@ -93,10 +91,8 @@ function AppRoutes() {
           >
             <Route index element={<Navigate to={ROUTES.cook} replace />} />
             <Route path={ROUTES.cook.slice(1)} element={<CookingHome />} />
-            <Route path={ROUTES.create.slice(1)} element={<GeneratorView />} />
-            <Route path={ROUTES.explore.slice(1)} element={<ExploreView />} />
             <Route path={ROUTES.saved.slice(1)} element={<SavedView />} />
-            <Route path={ROUTES.plan.slice(1)} element={<MealPlanView />} />
+            <Route path={ROUTES.plan.slice(1)} element={<SimplePlanView />} />
             <Route path={ROUTES.profile.slice(1)} element={<ProfileView />} />
             <Route path={ROUTES.preferences.slice(1)} element={<FoodPreferencesScreen />} />
             <Route path={ROUTES.settings.slice(1)} element={<SettingsView />} />
