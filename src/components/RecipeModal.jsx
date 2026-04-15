@@ -67,7 +67,7 @@ export default function RecipeModal({ recipe, onClose, onRecipeChange }) {
       </div>
 
       {/* ── Desktop: centered modal (hidden below sm) ── */}
-      <div className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4">
+      <div className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4 lg:p-8">
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
@@ -77,7 +77,7 @@ export default function RecipeModal({ recipe, onClose, onRecipeChange }) {
 
         {/* Modal card */}
         <div
-          className="relative z-10 w-full max-w-2xl flex flex-col rounded-3xl bg-slate-50 dark:bg-slate-950 shadow-2xl animate-in zoom-in-75 duration-200 overflow-hidden"
+          className="relative z-10 w-full max-w-2xl lg:max-w-4xl flex flex-col rounded-3xl bg-slate-50 dark:bg-slate-950 shadow-2xl animate-in zoom-in-75 duration-200 overflow-hidden"
           style={{ maxHeight: '90dvh' }}
           role="dialog"
           aria-modal="true"

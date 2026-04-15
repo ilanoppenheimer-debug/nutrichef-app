@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import RecipeCard from './RecipeCard.jsx';
-import TweakBar, { COOKING_TWEAKS } from './TweakBar.jsx';
 import { useBottomSheet } from '../hooks/useBottomSheet.js';
 
 /**
@@ -93,26 +92,19 @@ export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange, onT
             {/* Keep RecipeCard mounted while bs.mounted (even if recipe prop
                 changes to null during the exit animation) */}
             {recipe && (
-              <>
-                {onTweak && (
-                  <div className="px-4 pt-2">
-                    <TweakBar
-                      options={COOKING_TWEAKS}
-                      onTweak={onTweak}
-                      tweakingType={tweakingType}
-                      label="Ajustar receta"
-                    />
-                  </div>
-                )}
-                <RecipeCard recipe={recipe} onRecipeChange={onRecipeChange} />
-              </>
+              <RecipeCard
+                recipe={recipe}
+                onRecipeChange={onRecipeChange}
+                onTweak={onTweak}
+                tweakingType={tweakingType}
+              />
             )}
           </div>
         </div>
       </div>
 
       {/* ══ DESKTOP centered modal ═══════════════════════════════════════════ */}
-      <div className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4">
+      <div className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4 lg:p-8">
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -123,7 +115,7 @@ export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange, onT
 
         {/* Modal */}
         <div
-          className="relative z-10 w-full max-w-2xl flex flex-col rounded-3xl bg-slate-50 dark:bg-slate-950 shadow-2xl overflow-hidden"
+          className="relative z-10 w-full max-w-2xl lg:max-w-4xl flex flex-col rounded-3xl bg-slate-50 dark:bg-slate-950 shadow-2xl overflow-hidden"
           style={{
             maxHeight: '90dvh',
             opacity: bs.visible ? 1 : 0,
@@ -143,19 +135,12 @@ export default function RecipeBottomSheet({ recipe, onClose, onRecipeChange, onT
 
           <div className="flex-1 overflow-y-auto overscroll-contain">
             {recipe && (
-              <>
-                {onTweak && (
-                  <div className="px-4 pt-4">
-                    <TweakBar
-                      options={COOKING_TWEAKS}
-                      onTweak={onTweak}
-                      tweakingType={tweakingType}
-                      label="Ajustar receta"
-                    />
-                  </div>
-                )}
-                <RecipeCard recipe={recipe} onRecipeChange={onRecipeChange} />
-              </>
+              <RecipeCard
+                recipe={recipe}
+                onRecipeChange={onRecipeChange}
+                onTweak={onTweak}
+                tweakingType={tweakingType}
+              />
             )}
           </div>
         </div>

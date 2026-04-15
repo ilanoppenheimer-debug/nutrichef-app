@@ -6,26 +6,47 @@ import { useCooking } from '../hooks/useCooking.js';
 import { useMealPrep } from '../hooks/useMealPrep.js';
 import { callGeminiVisionAPI } from '../lib/gemini.js';
 
-// ── Intent options (single source of truth) ──────────────────────────────────
+// ── Intent options (the user's goal/mode) ────────────────────────────────────
 
 const INTENT_OPTIONS = [
   { value: 'inspirame', label: '✨ Inspírame' },
   { value: 'proteico',  label: '💪 Proteico' },
   { value: 'liviano',   label: '🥗 Liviano' },
-  { value: 'dulce',     label: '🍫 Dulce' },
   { value: 'economico', label: '💸 Económico' },
-  { value: 'snack',     label: '🍎 Snack' },
 ];
 const VALID_INTENTS = new Set(INTENT_OPTIONS.map(o => o.value));
 const MEAL_PREP_INTENTS = new Set(['inspirame', 'proteico', 'liviano', 'economico']);
 const INTENT_STORAGE_KEY = 'nutrichef_cook_intent';
 
+// ── Flavor options (orthogonal dimension — dulce/salado/any) ────────────────
+
+const FLAVOR_OPTIONS = [
+  { value: 'any',    label: 'Cualquiera' },
+  { value: 'dulce',  label: '🍬 Dulce' },
+  { value: 'salado', label: '🧂 Salado' },
+];
+const VALID_FLAVORS = new Set(FLAVOR_OPTIONS.map(o => o.value));
+const FLAVOR_STORAGE_KEY = 'nutrichef_cook_flavor';
+
 function loadInitialIntent() {
   try {
     const saved = localStorage.getItem(INTENT_STORAGE_KEY);
     if (saved && VALID_INTENTS.has(saved)) return saved;
+    // Legacy migration: old users with intent='dulce' or 'snack' get default intent
+    // (their flavor preference is migrated separately in loadInitialFlavor).
   } catch { /* ignore */ }
   return 'inspirame';
+}
+
+function loadInitialFlavor() {
+  try {
+    const savedFlavor = localStorage.getItem(FLAVOR_STORAGE_KEY);
+    if (savedFlavor && VALID_FLAVORS.has(savedFlavor)) return savedFlavor;
+    // Legacy: if previous intent was 'dulce', migrate to flavor='dulce'
+    const savedIntent = localStorage.getItem(INTENT_STORAGE_KEY);
+    if (savedIntent === 'dulce') return 'dulce';
+  } catch { /* ignore */ }
+  return 'any';
 }
 
 // ── Suggested ingredient chips for the "tengo ingredientes" card ─────────────
@@ -42,6 +63,19 @@ function getTimeOfDay(hour = new Date().getHours()) {
   if (hour >= 16 && hour < 19) return 'tarde';
   if (hour >= 19 && hour < 23) return 'noche';
   return 'noche_tarde';
+}
+
+// ── Contextual greeting (visible, confirms the system understands the hour) ─
+
+function getTimeGreeting(timeOfDay = getTimeOfDay()) {
+  switch (timeOfDay) {
+    case 'manana':      return { emoji: '🌅', hint: 'Hora del desayuno' };
+    case 'mediodia':    return { emoji: '☀️', hint: 'Hora del almuerzo' };
+    case 'tarde':       return { emoji: '☕', hint: 'Hora de la merienda' };
+    case 'noche':       return { emoji: '🌙', hint: 'Hora de la cena' };
+    case 'noche_tarde': return { emoji: '🌙', hint: 'Algo ligero para esta hora' };
+    default:            return { emoji: '✨', hint: '' };
+  }
 }
 
 // ── Result preview card (tap to re-open the generated recipe) ────────────────
@@ -119,6 +153,15 @@ export default function CookingHome() {
     try { localStorage.setItem(INTENT_STORAGE_KEY, intent); } catch { /* ignore */ }
   }, [intent]);
 
+  // Flavor dimension (orthogonal to intent — dulce/salado/any)
+  const [flavor, setFlavor] = useState(loadInitialFlavor);
+  useEffect(() => {
+    try { localStorage.setItem(FLAVOR_STORAGE_KEY, flavor); } catch { /* ignore */ }
+  }, [flavor]);
+
+  // Time greeting (contextual hint in header)
+  const greeting = getTimeGreeting();
+
   // Ingredients input + progressive disclosure
   const [ingredientes, setIngredientes] = useState('');
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
@@ -140,13 +183,15 @@ export default function CookingHome() {
 
   // Compute current params (time_of_day captured at generation time, not stored,
   // so the cache key reflects the moment the request was made)
-  const buildCookNowParams = () => ({ intent, time_of_day: getTimeOfDay() });
+  const buildCookNowParams = () => ({ intent, flavor, time_of_day: getTimeOfDay() });
   const buildIngredientsParams = () => ({
     intent,
+    flavor,
     time_of_day: getTimeOfDay(),
     ingredientes: ingredientes.trim(),
   });
   const mealPrepIntent = MEAL_PREP_INTENTS.has(intent) ? intent : 'inspirame';
+  // Meal prep ignores flavor (plans should be balanced across the week)
   const buildMealPrepParams = () => ({ intent: mealPrepIntent });
 
   // When intent or ingredients change, sync the displayed result to whatever
@@ -155,12 +200,12 @@ export default function CookingHome() {
     setCurrentCookNowRecipe(getRecipe('cookNow', buildCookNowParams()));
     setCurrentMealPrepPlan(mealPrep.getPlan(buildMealPrepParams()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intent]);
+  }, [intent, flavor]);
 
   useEffect(() => {
     setCurrentIngredientsRecipe(getRecipe('ingredients', buildIngredientsParams()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intent, ingredientes]);
+  }, [intent, flavor, ingredientes]);
 
   // ── Generate handlers ──────────────────────────────────────────────────────
 
@@ -297,13 +342,18 @@ export default function CookingHome() {
   const mealPrepParams = buildMealPrepParams();
 
   return (
-    <div className="max-w-lg mx-auto space-y-5">
-      {/* ── 1. Header ──────────────────────────────────────────────────────── */}
+    <div className="max-w-lg lg:max-w-2xl mx-auto space-y-5">
+      {/* ── 1. Header with contextual time greeting ────────────────────────── */}
       <header className="pt-1">
         <h1 className="text-2xl font-black text-slate-800 dark:text-white">¿Qué te apetece hoy?</h1>
+        {greeting.hint && (
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {greeting.emoji} {greeting.hint}
+          </p>
+        )}
       </header>
 
-      {/* ── 2. Intent chips (wrapped, no scroll) ──────────────────────────── */}
+      {/* ── 2. Intent chips (primary: the goal/mode) ──────────────────────── */}
       <nav aria-label="Intención" className="flex flex-wrap gap-2">
         {INTENT_OPTIONS.map(opt => {
           const isActive = intent === opt.value;
@@ -317,6 +367,29 @@ export default function CookingHome() {
                 isActive
                   ? 'text-white border-transparent shadow-sm'
                   : 'bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200'
+              }`}
+              style={isActive ? { background: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : {}}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ── 2b. Flavor chips (secondary: dulce/salado/cualquiera) ─────────── */}
+      <nav aria-label="Sabor" className="flex flex-wrap gap-2 -mt-2">
+        {FLAVOR_OPTIONS.map(opt => {
+          const isActive = flavor === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFlavor(opt.value)}
+              aria-pressed={isActive}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${
+                isActive
+                  ? 'text-white border-transparent shadow-sm'
+                  : 'bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300'
               }`}
               style={isActive ? { background: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : {}}
             >

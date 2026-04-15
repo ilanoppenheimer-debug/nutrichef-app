@@ -24,6 +24,7 @@ import { annotateRecipeIngredients, normalizeIngredientEntry } from '../lib/ingr
 import { clampServings, parseServingsCount, scaleNutritionLabel, scaleQuantityText } from '../lib/recipeScaling.js';
 import RecipeHeaderCompact from './RecipeHeaderCompact.jsx';
 import StickyCTA from './StickyCTA.jsx';
+import TweakBar, { COOKING_TWEAKS } from './TweakBar.jsx';
 import { recordLike, recordDislike } from '../lib/learningEngine.js';
 
 function formatSafetyBadge(reason) {
@@ -386,7 +387,7 @@ function parseTotalWeightGrams(ingredients = []) {
   return total;
 }
 
-export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
+export default function RecipeCard({ recipe: initialRecipe, onRecipeChange, onTweak, tweakingType }) {
   const profile = useProfileStore((s) => s.profile);
   const setProfile = useProfileStore((s) => s.setProfile);
   const savedMeals = useCollectionsStore((s) => s.savedMeals);
@@ -531,7 +532,7 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
       />
 
       {/* ── Contenido con scroll (progressive disclosure) ─────────── */}
-      <div className="space-y-2.5 px-4 pt-2 pb-32 sm:px-5 md:px-6 sm:pb-8">
+      <div className="space-y-2.5 px-4 pt-2 pb-32 sm:px-5 md:px-6 sm:pb-8 lg:pb-6">
 
         {/* AdjustPanel — revealed when toggled from sticky CTA */}
         {showAdjust && (
@@ -549,6 +550,9 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
             Ajustamos {adjustedIngredientsCount} ingrediente{adjustedIngredientsCount === 1 ? '' : 's'} según tus preferencias.
           </div>
         )}
+
+        {/* ①+② Ingredientes y Preparación — lado a lado en desktop (lg+) */}
+        <div className="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
 
         {/* ① Ingredientes — open by default, servings control in header */}
         <SectionCard
@@ -605,6 +609,9 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
             ))}
           </div>
         </SectionCard>
+
+        </div>
+        {/* ── fin grid lg (ingredientes + preparación) ────────────── */}
 
         {/* ③ Nutrición detallada — secondary, closed by default */}
         {recipe.macros && (
@@ -723,6 +730,16 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange }) {
             </button>
           </div>
         </div>
+
+        {/* ⑨ TweakBar — moved to bottom so user sees recipe first */}
+        {onTweak && (
+          <TweakBar
+            options={COOKING_TWEAKS}
+            onTweak={onTweak}
+            tweakingType={tweakingType}
+            label="¿Ajustar esta receta?"
+          />
+        )}
 
       </div>
 

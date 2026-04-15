@@ -80,19 +80,25 @@ const INTENT_GUIDANCE = {
   inspirame: 'Sorprende al usuario con algo coherente al momento del día. Prioriza accesibilidad.',
   proteico:  'Maximiza proteína por porción. Carnes magras, huevos, legumbres o lácteos.',
   liviano:   'Bajo en calorías y fácil de digerir. Verduras, ensaladas, proteínas magras.',
-  dulce:     'Postre o snack dulce simple, ingredientes accesibles, porción razonable.',
   economico: 'Ingredientes baratos: huevo, legumbres, arroz, verduras de estación. Evita carnes caras.',
-  snack:     'Algo pequeño y rápido entre comidas. Mínimo esfuerzo.',
 };
 
-// ── Time of day → silent meal-type inference ─────────────────────────────────
+// ── Time of day → silent meal-type inference (firm directives) ──────────────
 
 const TIME_GUIDANCE = {
-  manana:      'Es la mañana del usuario. Sugiere algo apropiado para desayuno.',
-  mediodia:    'Es el mediodía. Sugiere comida principal/almuerzo.',
-  tarde:       'Es la tarde. Sugiere merienda o snack ligero.',
-  noche:       'Es la noche. Sugiere algo para cena (usualmente más liviano y rápido).',
-  noche_tarde: 'Es muy tarde en la noche. Sugiere algo ligero, simple y rápido.',
+  manana:      'Es la MAÑANA del usuario. DEBE ser un desayuno (huevos, tostadas, smoothie, avena, frutas, yogurt, panqueques). Nunca sugerir almuerzo ni cena.',
+  mediodia:    'Es el MEDIODÍA. DEBE ser almuerzo/comida principal con proteína + carbohidrato + vegetales. Nunca desayuno ni snack.',
+  tarde:       'Es la TARDE. DEBE ser merienda o snack ligero, porción pequeña. Nunca plato principal grande.',
+  noche:       'Es la NOCHE. DEBE ser cena — idealmente más liviana que el almuerzo, fácil digestión.',
+  noche_tarde: 'Es MUY TARDE (madrugada). DEBE ser algo MUY ligero, rápido y simple. Evitar comidas pesadas.',
+};
+
+// ── Flavor preference → orthogonal dimension (optional) ─────────────────────
+
+const FLAVOR_GUIDANCE = {
+  any:    '',
+  dulce:  'Tipo de plato DULCE: postre, smoothie, bowl con frutas, desayuno dulce, granola. Usar sabores como vainilla, canela, cacao, frutas, miel.',
+  salado: 'Tipo de plato SALADO: comida principal, ensalada, bowl, preparación con proteína y vegetales. Sabores umami, comino, ajo, hierbas.',
 };
 
 // ── Directed-change guidance for cooking tweaks ──────────────────────────────
@@ -133,6 +139,7 @@ function buildPrompt(mode, params, { profileStr, locale, guardrail, superStr }, 
   const restrictions = [guardrail, superStr].filter(Boolean).join('\n') || 'Ninguna';
   const intentGuidance = INTENT_GUIDANCE[params.intent] || INTENT_GUIDANCE.inspirame;
   const timeGuidance = TIME_GUIDANCE[params.time_of_day] || TIME_GUIDANCE.mediodia;
+  const flavorGuidance = FLAVOR_GUIDANCE[params.flavor] || '';
   const tweakBlock = buildTweakBlock(params.change_type, previousRecipe);
   const learningBlock = buildLearningPromptBlock();
 
@@ -161,7 +168,7 @@ Restricciones: ${restrictions}${inputsBlock}
 
 Directriz interna (NO mencionar al usuario):
 - Intención: ${intentGuidance}
-- Momento: ${timeGuidance}
+- Momento: ${timeGuidance}${flavorGuidance ? `\n- Sabor: ${flavorGuidance}` : ''}
 - Inferir tipo de comida (desayuno/almuerzo/merienda/cena/snack) según hora + intención. No explicar.
 ${tweakBlock}${learningBlock}
 SOLO JSON, sin texto adicional.
@@ -180,8 +187,9 @@ SOLO JSON, sin texto adicional.
  * - getError(mode, params)                      → string | null
  *
  * Params shape:
- *   { intent: 'inspirame'|'proteico'|'liviano'|'dulce'|'economico'|'snack',
+ *   { intent: 'inspirame'|'proteico'|'liviano'|'economico',
  *     time_of_day: 'manana'|'mediodia'|'tarde'|'noche'|'noche_tarde',
+ *     flavor?: 'any'|'dulce'|'salado',  // optional flavor bias
  *     ingredientes?: string,         // ingredients mode only
  *     change_type?: ... }            // tweak mode
  *

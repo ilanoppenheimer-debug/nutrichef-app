@@ -69,14 +69,6 @@ function MealPrepPlanDetail({ plan, onTweak, tweakingType }) {
         )}
       </div>
 
-      {/* Directed-change tweak chips */}
-      <TweakBar
-        options={MEAL_PREP_TWEAKS}
-        onTweak={onTweak}
-        tweakingType={tweakingType}
-        label="Ajustar plan"
-      />
-
       {/* Nutrition summary pills */}
       {plan.nutrition_summary && (
         <div className="flex gap-3 flex-wrap">
@@ -180,6 +172,16 @@ function MealPrepPlanDetail({ plan, onTweak, tweakingType }) {
           </p>
         </div>
       )}
+
+      {/* Directed-change tweak chips — moved to bottom so user sees plan first */}
+      {onTweak && (
+        <TweakBar
+          options={MEAL_PREP_TWEAKS}
+          onTweak={onTweak}
+          tweakingType={tweakingType}
+          label="¿Ajustar este plan?"
+        />
+      )}
     </div>
   );
 }
@@ -261,7 +263,7 @@ export function MealPrepSheet({ plan, onClose, onTweak, tweakingType }) {
       </div>
 
       {/* ══ DESKTOP centered modal ═══════════════════════════════════════════ */}
-      <div className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4">
+      <div className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4 lg:p-8">
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -272,7 +274,7 @@ export function MealPrepSheet({ plan, onClose, onTweak, tweakingType }) {
 
         {/* Modal */}
         <div
-          className="relative z-10 w-full max-w-2xl flex flex-col rounded-3xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden"
+          className="relative z-10 w-full max-w-2xl lg:max-w-3xl flex flex-col rounded-3xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden"
           style={{
             maxHeight: '90dvh',
             opacity: bs.visible ? 1 : 0,
