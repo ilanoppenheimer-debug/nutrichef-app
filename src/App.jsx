@@ -5,6 +5,7 @@ import { isProfileComplete } from './stores/useProfileStore.js';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { FoodPreferencesProvider } from './context/FoodPreferencesContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { ConfirmDialogProvider } from './context/ConfirmDialogContext.jsx';
 import { ROUTES } from './routes/paths.js';
 import { useProfileStore } from './stores/useProfileStore.js';
 import { useSyncStore } from './stores/useSyncStore.js';
@@ -109,7 +110,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppRoutes />
+        <ConfirmDialogProvider>
+          <AppRoutes />
+        </ConfirmDialogProvider>
       </AuthProvider>
     </ThemeProvider>
   );

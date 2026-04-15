@@ -5,6 +5,9 @@ import { MealPrepResultCard, MealPrepSheet } from '../components/MealPrepPlanCar
 import { useCooking } from '../hooks/useCooking.js';
 import { useMealPrep } from '../hooks/useMealPrep.js';
 import { callGeminiVisionAPI } from '../lib/gemini.js';
+import { resolveRecipeSheetState } from '../helpers/cookingViewHelpers.js';
+import PageLayout from '../components/base/PageLayout.jsx';
+import { usePersistedPreference } from '../hooks/useCookingPreferences.js';
 
 // ── Intent options (the user's goal/mode) ────────────────────────────────────
 
@@ -27,27 +30,6 @@ const FLAVOR_OPTIONS = [
 ];
 const VALID_FLAVORS = new Set(FLAVOR_OPTIONS.map(o => o.value));
 const FLAVOR_STORAGE_KEY = 'nutrichef_cook_flavor';
-
-function loadInitialIntent() {
-  try {
-    const saved = localStorage.getItem(INTENT_STORAGE_KEY);
-    if (saved && VALID_INTENTS.has(saved)) return saved;
-    // Legacy migration: old users with intent='dulce' or 'snack' get default intent
-    // (their flavor preference is migrated separately in loadInitialFlavor).
-  } catch { /* ignore */ }
-  return 'inspirame';
-}
-
-function loadInitialFlavor() {
-  try {
-    const savedFlavor = localStorage.getItem(FLAVOR_STORAGE_KEY);
-    if (savedFlavor && VALID_FLAVORS.has(savedFlavor)) return savedFlavor;
-    // Legacy: if previous intent was 'dulce', migrate to flavor='dulce'
-    const savedIntent = localStorage.getItem(INTENT_STORAGE_KEY);
-    if (savedIntent === 'dulce') return 'dulce';
-  } catch { /* ignore */ }
-  return 'any';
-}
 
 // ── Suggested ingredient chips for the "tengo ingredientes" card ─────────────
 
@@ -147,17 +129,17 @@ export default function CookingHome() {
   const [viewingRecipe, setViewingRecipe] = useState(null);
   const [viewingPlan, setViewingPlan] = useState(null);
 
-  // Intent (persisted, falls back to "inspirame")
-  const [intent, setIntent] = useState(loadInitialIntent);
-  useEffect(() => {
-    try { localStorage.setItem(INTENT_STORAGE_KEY, intent); } catch { /* ignore */ }
-  }, [intent]);
+  const [intent, setIntent] = usePersistedPreference({
+    storageKey: INTENT_STORAGE_KEY,
+    defaultValue: 'inspirame',
+    isValid: (value) => VALID_INTENTS.has(value),
+  });
 
-  // Flavor dimension (orthogonal to intent — dulce/salado/any)
-  const [flavor, setFlavor] = useState(loadInitialFlavor);
-  useEffect(() => {
-    try { localStorage.setItem(FLAVOR_STORAGE_KEY, flavor); } catch { /* ignore */ }
-  }, [flavor]);
+  const [flavor, setFlavor] = usePersistedPreference({
+    storageKey: FLAVOR_STORAGE_KEY,
+    defaultValue: 'any',
+    isValid: (value) => VALID_FLAVORS.has(value),
+  });
 
   // Time greeting (contextual hint in header)
   const greeting = getTimeGreeting();
@@ -323,26 +305,22 @@ export default function CookingHome() {
 
   // ── Loading / error helpers for the active sheet ───────────────────────────
 
-  // Which surface owns viewingRecipe → wire its tweak handler to the sheet
-  const recipeSheetTweakHandler = (() => {
-    if (!viewingRecipe) return null;
-    if (viewingRecipe === currentCookNowRecipe) return handleCookNowTweak;
-    if (viewingRecipe === currentIngredientsRecipe) return handleIngredientsTweak;
-    return null;
-  })();
-  const recipeSheetTweakingType = (() => {
-    if (!viewingRecipe) return null;
-    if (viewingRecipe === currentCookNowRecipe) return cookNowTweakingType;
-    if (viewingRecipe === currentIngredientsRecipe) return ingredientsTweakingType;
-    return null;
-  })();
+  const recipeSheetState = resolveRecipeSheetState({
+    viewingRecipe,
+    currentCookNowRecipe,
+    currentIngredientsRecipe,
+    handleCookNowTweak,
+    handleIngredientsTweak,
+    cookNowTweakingType,
+    ingredientsTweakingType,
+  });
 
   const cookNowParams = buildCookNowParams();
   const ingredientsParams = buildIngredientsParams();
   const mealPrepParams = buildMealPrepParams();
 
   return (
-    <div className="max-w-lg lg:max-w-2xl mx-auto space-y-5">
+    <PageLayout className="max-w-lg lg:max-w-2xl space-y-5">
       {/* ── 1. Header with contextual time greeting ────────────────────────── */}
       <header className="pt-1">
         <h1 className="text-2xl font-black text-slate-800 dark:text-white">¿Qué te apetece hoy?</h1>
@@ -539,8 +517,8 @@ export default function CookingHome() {
         recipe={viewingRecipe}
         onClose={() => setViewingRecipe(null)}
         onRecipeChange={setViewingRecipe}
-        onTweak={recipeSheetTweakHandler}
-        tweakingType={recipeSheetTweakingType}
+        onTweak={recipeSheetState.onTweak}
+        tweakingType={recipeSheetState.tweakingType}
       />
 
       <MealPrepSheet
@@ -549,6 +527,6 @@ export default function CookingHome() {
         onTweak={handleMealPrepTweak}
         tweakingType={mealPrepTweakingType}
       />
-    </div>
+    </PageLayout>
   );
 }

@@ -2,6 +2,7 @@ import { buildAbsoluteGuardrail } from './brandDatabase.js';
 import { fetchWithAuth } from './authUtils.js';
 import { buildFoodPreferencePromptBlock, getFoodPreferenceCacheFragment, getFoodPreferenceSummaryLines, withFoodPreferences } from './foodPreferences.js';
 import { normalizeRecipePayload } from './ingredientIntelligence.js';
+import { buildOptionalPromptParts, inferSchemaByCacheKey } from '../helpers/geminiPromptHelpers.js';
 export { buildAbsoluteGuardrail } from './brandDatabase.js';
 export { buildFoodPreferencePromptBlock } from './foodPreferences.js';
 export { normalizeRecipePayload } from './ingredientIntelligence.js';
@@ -583,21 +584,15 @@ function normalizeGeminiResponse(parsed, responseSchema) {
 }
 
 function inferResponseSchema(promptText, entryKey, storeCacheKey) {
-  if (storeCacheKey === GENERATOR_RECIPE_CACHE_KEY || (!storeCacheKey && entryKey)) {
-    return RECIPE_JSON_SCHEMA;
-  }
-
-  if (storeCacheKey === EXPLORE_CACHE_KEY) {
-    return SEARCH_SUGGESTIONS_RESPONSE_SCHEMA;
-  }
-
-  if (storeCacheKey === MEALPLAN_CACHE_KEY) {
-    return MEAL_PLAN_RESPONSE_SCHEMA;
-  }
-
-  if (storeCacheKey === SHOPPING_CACHE_KEY) {
-    return SHOPPING_LIST_RESPONSE_SCHEMA;
-  }
+  const schemaFromCache = inferSchemaByCacheKey({
+    storeCacheKey,
+    entryKey,
+    recipeSchema: { cacheKey: GENERATOR_RECIPE_CACHE_KEY, schema: RECIPE_JSON_SCHEMA },
+    exploreSchema: { cacheKey: EXPLORE_CACHE_KEY, schema: SEARCH_SUGGESTIONS_RESPONSE_SCHEMA },
+    mealPlanSchema: { cacheKey: MEALPLAN_CACHE_KEY, schema: MEAL_PLAN_RESPONSE_SCHEMA },
+    shoppingSchema: { cacheKey: SHOPPING_CACHE_KEY, schema: SHOPPING_LIST_RESPONSE_SCHEMA },
+  });
+  if (schemaFromCache) return schemaFromCache;
 
   const text = String(promptText || '');
 
@@ -866,12 +861,14 @@ export function detectSearchIntent(query) {
 }
 
 export function buildSearchPrompt({ query, mode, profileStr, localeStr, supermarketInstruction, brandInstruction, favoritesStr, pesachInstruction, foodPreferenceInstruction = '', guardrailInstruction = '' }) {
-  const favPart = favoritesStr ? ` Le gustan: ${favoritesStr}.` : '';
-  const superPart = supermarketInstruction ? `\n${supermarketInstruction}` : '';
-  const brandPart = brandInstruction ? `\n${brandInstruction}` : '';
-  const pesachPart = pesachInstruction ? `\n${pesachInstruction}` : '';
-  const foodPreferencePart = foodPreferenceInstruction ? `\n${foodPreferenceInstruction}` : '';
-  const guardrailPart = guardrailInstruction ? `\n${guardrailInstruction}` : '';
+  const { favPart, superPart, brandPart, pesachPart, foodPreferencePart, guardrailPart } = buildOptionalPromptParts({
+    favoritesStr,
+    supermarketInstruction,
+    brandInstruction,
+    pesachInstruction,
+    foodPreferenceInstruction,
+    guardrailInstruction,
+  });
 
   if (mode === 'literal') {
     return `${localeStr}

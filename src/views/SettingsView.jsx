@@ -6,6 +6,10 @@ import { useTheme, THEMES } from '../context/ThemeContext.jsx';
 import { useProfileStore } from '../stores/useProfileStore.js';
 import { useFoodPreferences } from '../hooks/useFoodPreferences.js';
 import { ROUTES } from '../routes/paths.js';
+import PageLayout from '../components/base/PageLayout.jsx';
+import BaseCard from '../components/base/BaseCard.jsx';
+import BaseButton from '../components/base/BaseButton.jsx';
+import { useConfirmDialog } from '../context/ConfirmDialogContext.jsx';
 
 const COUNTRIES = [
   'Chile', 'Argentina', 'México', 'Colombia', 'Perú', 'España',
@@ -28,9 +32,16 @@ export default function SettingsView() {
   const profile = useProfileStore((s) => s.profile);
   const setProfile = useProfileStore((s) => s.setProfile);
   const { summaryLines } = useFoodPreferences();
+  const { askConfirmation } = useConfirmDialog();
   const [linkingGoogle, setLinkingGoogle] = useState(false);
 
   const handleLinkGoogle = async () => {
+    const confirmed = await askConfirmation({
+      title: 'Vincular cuenta Google',
+      description: '¿Quieres vincular tu cuenta local con Google para sincronizar datos?',
+      confirmLabel: 'Sí, vincular',
+    });
+    if (!confirmed) return;
     setLinkingGoogle(true);
     try {
       await linkToGoogle();
@@ -41,14 +52,20 @@ export default function SettingsView() {
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-black text-slate-800 dark:text-white">Configuración</h1>
+  const handleLogout = async () => {
+    const confirmed = await askConfirmation({
+      title: 'Cerrar sesión',
+      description: '¿Seguro que quieres cerrar tu sesión actual?',
+      confirmLabel: 'Sí, cerrar sesión',
+      danger: true,
+    });
+    if (confirmed) logout();
+  };
 
-      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 dark:border-gray-800">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Cuenta</h2>
-        </div>
+  return (
+    <PageLayout title="Configuración">
+
+      <BaseCard title="Cuenta" className="overflow-hidden">
         <div className="p-5 flex items-center gap-4">
           {user?.photoURL ? (
             <img src={user.photoURL} alt={user.displayName} className="w-12 h-12 rounded-full border-2 shadow-sm" style={{ borderColor: 'var(--c-primary-border)' }} />
@@ -62,15 +79,15 @@ export default function SettingsView() {
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email || (isLocalMode ? 'Sin cuenta - solo este dispositivo' : '')}</p>
           </div>
           {isLocalMode ? (
-            <button onClick={handleLinkGoogle} disabled={linkingGoogle} className="shrink-0 flex items-center gap-2 text-sm font-bold px-3 py-2.5 rounded-xl text-white min-h-[44px] transition-all" style={{ background: 'var(--c-primary)' }}>
+            <BaseButton onClick={handleLinkGoogle} disabled={linkingGoogle} className="shrink-0">
               {linkingGoogle ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
               <span className="hidden sm:inline">Vincular Google</span>
-            </button>
+            </BaseButton>
           ) : (
-            <button onClick={logout} className="shrink-0 flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-gray-800 hover:bg-red-50 px-3 py-2.5 rounded-xl min-h-[44px] transition-all">
+            <BaseButton variant="secondary" onClick={handleLogout} className="shrink-0 text-slate-500 hover:text-red-600">
               <LogOut size={15} />
               <span className="hidden sm:inline">Cerrar sesión</span>
-            </button>
+            </BaseButton>
           )}
         </div>
         {isLocalMode && (
@@ -78,9 +95,9 @@ export default function SettingsView() {
             ⚠️ En modo local tus datos no se sincronizan. Vincula tu cuenta Google para no perderlos.
           </div>
         )}
-      </section>
+      </BaseCard>
 
-      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <BaseCard title="Preferencias alimentarias" className="overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-gray-800">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
             <ShieldCheck size={12} /> Preferencias alimentarias
@@ -119,9 +136,9 @@ export default function SettingsView() {
             Editar preferencias
           </button>
         </div>
-      </section>
+      </BaseCard>
 
-      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <BaseCard title="Localización" className="overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-gray-800">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
             <Globe size={12} /> Localización
@@ -167,9 +184,9 @@ export default function SettingsView() {
             </div>
           </div>
         </div>
-      </section>
+      </BaseCard>
 
-      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <BaseCard title="Apariencia" className="overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-gray-800">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Apariencia</h2>
         </div>
@@ -219,14 +236,14 @@ export default function SettingsView() {
             </div>
           </div>
         </div>
-      </section>
+      </BaseCard>
 
-      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <BaseCard className="overflow-hidden">
         <div className="p-5 space-y-1 text-sm text-slate-500 dark:text-slate-400">
           <p>NutriChef IA - App personal de nutrición</p>
           <p className="text-xs">Potenciado por Google Gemini 2.5 Flash</p>
         </div>
-      </section>
-    </div>
+      </BaseCard>
+    </PageLayout>
   );
 }

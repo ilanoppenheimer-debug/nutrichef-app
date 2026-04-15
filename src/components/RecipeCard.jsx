@@ -26,6 +26,9 @@ import RecipeHeaderCompact from './RecipeHeaderCompact.jsx';
 import StickyCTA from './StickyCTA.jsx';
 import TweakBar, { COOKING_TWEAKS } from './TweakBar.jsx';
 import { recordLike, recordDislike } from '../lib/learningEngine.js';
+import { askChefAboutRecipe } from '../services/chefService.js';
+import { addRecipeToCollection, isRecipeInCollection, removeRecipeFromCollection } from '../helpers/recipeCollectionsHelpers.js';
+import { useConfirmDialog } from '../context/ConfirmDialogContext.jsx';
 
 function formatSafetyBadge(reason) {
   if (!reason) return 'Marca verificada';
@@ -388,6 +391,7 @@ function parseTotalWeightGrams(ingredients = []) {
 }
 
 export default function RecipeCard({ recipe: initialRecipe, onRecipeChange, onTweak, tweakingType }) {
+  const { askConfirmation } = useConfirmDialog();
   const profile = useProfileStore((s) => s.profile);
   const setProfile = useProfileStore((s) => s.setProfile);
   const savedMeals = useCollectionsStore((s) => s.savedMeals);
@@ -411,9 +415,9 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange, onTw
     setSelectedServings(parseServingsCount(recipe?.servings || 1));
   }, [recipe?.servings, recipe?.title]);
 
-  const isSavedForPlan = savedMeals?.some(item => item.title === recipe.title);
-  const isFavorite = favoriteRecipes?.some(item => item.title === recipe.title);
-  const isInterested = interestedRecipes?.some(item => item.title === recipe.title);
+  const isSavedForPlan = isRecipeInCollection(savedMeals, recipe.title);
+  const isFavorite = isRecipeInCollection(favoriteRecipes, recipe.title);
+  const isInterested = isRecipeInCollection(interestedRecipes, recipe.title);
   const baseServings = parseServingsCount(recipe?.servings || 1);
   const servingsScale = selectedServings / baseServings;
   const normalizedIngredients = recipe.ingredients?.map(ing => {
@@ -456,21 +460,35 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange, onTw
     setOpenSections(current => ({ ...current, [section]: !current[section] }));
   };
 
-  const toggleSaveForPlan = () => {
+  const toggleSaveForPlan = async () => {
     if (isSavedForPlan) {
-      setSavedMeals(savedMeals.filter(item => item.title !== recipe.title));
+      const confirmed = await askConfirmation({
+        title: 'Quitar del plan',
+        description: '¿Quieres quitar esta receta de tu plan guardado?',
+        confirmLabel: 'Quitar',
+        danger: true,
+      });
+      if (!confirmed) return;
+      setSavedMeals(removeRecipeFromCollection(savedMeals, recipe.title));
       return;
     }
-    setSavedMeals([...(savedMeals || []), { title: recipe.title, calories: displayRecipe.macros?.calories, servings: selectedServings }]);
+    setSavedMeals(addRecipeToCollection(savedMeals, { title: recipe.title, calories: displayRecipe.macros?.calories, servings: selectedServings }));
   };
 
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
     if (isFavorite) {
-      setFavoriteRecipes(favoriteRecipes.filter(item => item.title !== recipe.title));
+      const confirmed = await askConfirmation({
+        title: 'Quitar favorita',
+        description: '¿Quieres quitar esta receta de tus favoritas?',
+        confirmLabel: 'Quitar',
+        danger: true,
+      });
+      if (!confirmed) return;
+      setFavoriteRecipes(removeRecipeFromCollection(favoriteRecipes, recipe.title));
       return;
     }
-    setFavoriteRecipes([...(favoriteRecipes || []), recipe]);
-    if (isInterested) setInterestedRecipes(interestedRecipes.filter(item => item.title !== recipe.title));
+    setFavoriteRecipes(addRecipeToCollection(favoriteRecipes, recipe));
+    if (isInterested) setInterestedRecipes(removeRecipeFromCollection(interestedRecipes, recipe.title));
     // Learning: record positive signals for recipe ingredients
     (recipe.ingredients || []).forEach(ing => {
       const name = ing.nombre || ing.name;
@@ -478,13 +496,20 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange, onTw
     });
   };
 
-  const toggleInterested = () => {
+  const toggleInterested = async () => {
     if (isInterested) {
-      setInterestedRecipes(interestedRecipes.filter(item => item.title !== recipe.title));
+      const confirmed = await askConfirmation({
+        title: 'Quitar de interesadas',
+        description: '¿Quieres quitar esta receta de tu lista de interés?',
+        confirmLabel: 'Quitar',
+        danger: true,
+      });
+      if (!confirmed) return;
+      setInterestedRecipes(removeRecipeFromCollection(interestedRecipes, recipe.title));
       return;
     }
-    setInterestedRecipes([...(interestedRecipes || []), recipe]);
-    if (isFavorite) setFavoriteRecipes(favoriteRecipes.filter(item => item.title !== recipe.title));
+    setInterestedRecipes(addRecipeToCollection(interestedRecipes, recipe));
+    if (isFavorite) setFavoriteRecipes(removeRecipeFromCollection(favoriteRecipes, recipe.title));
   };
 
   const handleRefined = (refinedRecipe) => {
@@ -499,16 +524,13 @@ export default function RecipeCard({ recipe: initialRecipe, onRecipeChange, onTw
   const askChef = async () => {
     if (!chefQuestion.trim()) return;
     setAsking(true);
-    const prompt = `Cocinando: "${recipe.title}". Ingredientes: ${displayRecipe.ingredients?.map(i => i.name)?.join(', ') || 'N/A'}. Pregunta: "${chefQuestion}". Responde en un párrafo corto como chef experto. Solo texto.`;
-
     try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'text', payload: { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } } }),
+      const answer = await askChefAboutRecipe({
+        recipeTitle: recipe.title,
+        ingredientNames: displayRecipe.ingredients?.map((item) => item.name)?.join(', ') || 'N/A',
+        question: chefQuestion,
       });
-      const data = await response.json();
-      setChefAnswer(data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta.');
+      setChefAnswer(answer);
     } catch {
       setChefAnswer('Error de conexión.');
     } finally {

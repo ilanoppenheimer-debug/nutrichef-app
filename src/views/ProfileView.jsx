@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, ChevronDown, ChevronUp, Dumbbell, HeartPulse, Lock, Moon, PiggyBank, RefreshCw, ShoppingBag, Star, Target, Trophy } from 'lucide-react';
 import { useProfileStore } from '../stores/useProfileStore.js';
-import { calculateTDEE, getSupermarketsForCountry } from '../lib/gemini.js';
+import { getSupermarketsForCountry } from '../lib/gemini.js';
 import { mergeUniqueTerms } from '../lib/ingredientIntelligence.js';
+import { useProfileMacrosAutoSync } from '../hooks/useProfileMacrosAutoSync.js';
+import PageLayout from '../components/base/PageLayout.jsx';
 
 const SPORT_OPTIONS = ['Ninguno', 'Cardio', 'Fuerza/Powerlifting', 'Crossfit', 'HIIT', 'Deportes de equipo'];
 const DIETARY_STYLES = ['Ninguna', 'Vegetariana', 'Vegana', 'Pescatariana', 'Keto', 'Paleo'];
@@ -42,28 +44,7 @@ export default function ProfileView() {
   const [openSections, setOpenSections] = useState({ biometry: true, diet: true, shopping: false });
   const toggleProfileSection = (key) => setOpenSections(c => ({ ...c, [key]: !c[key] }));
 
-  // Recalcular macros automáticamente cuando cambien los datos relevantes
-  useEffect(() => {
-    if (profile.manualCalories && profile.manualProtein && profile.manualFiber && profile.manualCarb) return;
-    if (!profile.weight || !profile.height || !profile.age) return;
-
-    const macros = calculateTDEE(profile);
-    if (!macros) return;
-
-    setProfile(prev => ({
-      ...prev,
-      ...(!prev.manualCalories && { dailyCalories: macros.calories.toString() }),
-      ...(!prev.manualProtein && { proteinTarget: macros.protein.toString() }),
-      ...(!prev.manualFiber && { fiberTarget: macros.fiber.toString() }),
-      ...(!prev.manualCarb && { carbTarget: macros.carbs.toString() }),
-    }));
-  }, [
-    profile.weight, profile.height, profile.age, profile.gender,
-    profile.activityLevel, profile.goals,
-    profile.sportType, profile.trainingDuration, profile.trainingDaysPerWeek,
-    profile.manualCalories, profile.manualProtein, profile.manualFiber, profile.manualCarb,
-    setProfile
-  ]);
+  useProfileMacrosAutoSync(profile, setProfile);
 
   const toggleAllergy = (a) => setProfile({ ...profile, allergies: profile.allergies.includes(a) ? profile.allergies.filter(x => x !== a) : [...profile.allergies, a] });
   const removeLearnedPref = (i) => { const p = [...profile.learnedPreferences]; p.splice(i, 1); setProfile({ ...profile, learnedPreferences: p }); };
@@ -75,7 +56,7 @@ export default function ProfileView() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <PageLayout title="Perfil nutricional" className="max-w-6xl space-y-6">
 
       {/* Banner médico */}
       <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
@@ -501,6 +482,6 @@ export default function ProfileView() {
         )}
         </div>}
       </section>
-    </div>
+    </PageLayout>
   );
 }

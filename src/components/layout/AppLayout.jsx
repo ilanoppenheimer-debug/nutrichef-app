@@ -3,6 +3,7 @@ import { Bookmark, Calendar, ChefHat, LogOut, Settings, User } from 'lucide-reac
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../routes/paths.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useConfirmDialog } from '../../context/ConfirmDialogContext.jsx';
 import TipsWidget from '../TipsWidget.jsx';
 
 const DESKTOP_NAV_ITEMS = [
@@ -35,8 +36,19 @@ function mobileNavClass({ isActive }) {
 function AvatarMenu({ user, isLocalMode, onClose }) {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { askConfirmation } = useConfirmDialog();
 
   const go = (path) => { onClose(); navigate(path); };
+  const handleLogout = async () => {
+    onClose();
+    const confirmed = await askConfirmation({
+      title: 'Cerrar sesión',
+      description: '¿Seguro que quieres cerrar tu sesión actual?',
+      confirmLabel: 'Sí, cerrar sesión',
+      danger: true,
+    });
+    if (confirmed) logout();
+  };
 
   return (
     <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -55,7 +67,7 @@ function AvatarMenu({ user, isLocalMode, onClose }) {
           <Settings size={16} className="text-slate-400" /> Configuración
         </button>
         <div className="border-t border-slate-100 dark:border-gray-800 mt-1 pt-1">
-          <button onClick={() => { onClose(); logout(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
             <LogOut size={16} /> Cerrar sesión
           </button>
         </div>

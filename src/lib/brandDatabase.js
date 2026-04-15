@@ -1,7 +1,8 @@
 // Base de datos local de marcas verificadas por categoría.
 // Sirve como contexto para la IA y como filtro estricto en la UI.
 
-import { getFoodPreferenceSummaryLines, isDietSelected, withFoodPreferences } from './foodPreferences.js';
+import { getFoodPreferenceSummaryLines, withFoodPreferences } from './foodPreferences.js';
+import { ALLERGY_RULES, resolveLifestyleChecks, resolveReligiousChecks, resolveRelevantBrandCategories } from '../helpers/brandRulesHelpers.js';
 
 function createBrand(name, note, category, safety = {}) {
   return { name, note, category, safety };
@@ -53,14 +54,6 @@ export const SAFE_BRANDS = {
   },
 };
 
-const ALLERGY_RULES = {
-  'Sin Gluten': { key: 'glutenFree', label: 'Sin Gluten' },
-  'Sin Lácteos': { key: 'dairyFree', label: 'Sin Lácteos' },
-  'Alergia al Maní': { key: 'peanutFree', label: 'Sin Maní' },
-  'Alergia a Mariscos': { key: 'shellfishFree', label: 'Sin Mariscos' },
-  'Sin Soya': { key: 'soyFree', label: 'Sin Soya' },
-};
-
 function flattenBrandCatalog() {
   return Object.values(SAFE_BRANDS)
     .filter(Array.isArray)
@@ -73,17 +66,7 @@ function flattenBrandCatalog() {
 
 function getRequiredSafetyChecks(profile) {
   profile = withFoodPreferences(profile, profile?.foodPreferences);
-  const checks = [];
-
-  if (profile.pesachMode) checks.push({ key: 'kosherPassover', label: 'Apto Pésaj' });
-  if (profile.religiousDiet === 'Kosher') checks.push({ key: 'kosher', label: 'Apto Kosher' });
-  if (profile.religiousDiet === 'Halal') checks.push({ key: 'halal', label: 'Apto Halal' });
-
-  if (profile.dietaryStyle === 'Vegana' || isDietSelected(profile, 'vegan')) {
-    checks.push({ key: 'vegan', label: 'Vegano' });
-  } else if (profile.dietaryStyle === 'Vegetariana' || isDietSelected(profile, 'vegetarian')) {
-    checks.push({ anyOf: ['vegetarian', 'vegan'], label: 'Vegetariano' });
-  }
+  const checks = [...resolveReligiousChecks(profile), ...resolveLifestyleChecks(profile)];
 
   return [
     ...checks,
@@ -113,14 +96,7 @@ export function findBrandByName(name) {
 
 export function getRelevantBrandCategories(profile) {
   profile = withFoodPreferences(profile, profile?.foodPreferences);
-  const cats = [];
-  if (profile.pesachMode) cats.push('pesach');
-  if (profile.religiousDiet === 'Kosher') cats.push('kosher');
-  if (profile.religiousDiet === 'Halal') cats.push('halal');
-  if (profile.dietaryStyle === 'Vegana' || isDietSelected(profile, 'vegan')) cats.push('vegan');
-  if (profile.dietaryStyle === 'Vegetariana' || isDietSelected(profile, 'vegetarian')) cats.push('vegetariana');
-  if (profile.sportType === 'Fuerza/Powerlifting' || profile.useProteinPowder || isDietSelected(profile, 'high_protein')) cats.push('powerlifting');
-  return [...new Set(cats)];
+  return resolveRelevantBrandCategories(profile);
 }
 
 export function buildAbsoluteGuardrail(profile) {
