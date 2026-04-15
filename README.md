@@ -13,15 +13,15 @@ Aplicación web para generar recetas, planes de comida y listas de compra person
 
 ### Arquitectura general
 
-![Arquitectura NutriChef IA](docs/assets/arquitectura-nutrichef.svg)
+![Arquitectura NutriChef IA](https://raw.githubusercontent.com/SoulOppen/nutrichef-app/main/docs/assets/arquitectura-nutrichef.svg?sanitize=true)
 
 ### Flujo principal de usuario
 
-![Flujo principal de usuario](docs/assets/flujo-usuario-nutrichef.svg)
+![Flujo principal de usuario](https://raw.githubusercontent.com/SoulOppen/nutrichef-app/main/docs/assets/flujo-usuario-nutrichef.svg?sanitize=true)
 
 ### Setup rápido
 
-![Setup rápido de NutriChef IA](docs/assets/setup-rapido-nutrichef.svg)
+![Setup rápido de NutriChef IA](https://raw.githubusercontent.com/SoulOppen/nutrichef-app/main/docs/assets/setup-rapido-nutrichef.svg?sanitize=true)
 
 ## Funcionalidades principales
 
