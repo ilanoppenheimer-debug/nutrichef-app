@@ -2,8 +2,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  buildSearchPrompt,
   buildTimeConstraint,
   calculateTDEE,
+  compactProfile,
   detectSearchIntent,
   extractDislikedIngredient,
   extractJSON,
@@ -19,6 +21,53 @@ import {
   setCacheEntry,
   setGeminiCooldownUntil,
 } from './gemini.js';
+
+describe('compactProfile', () => {
+  it('concatena campos principales del perfil', () => {
+    const s = compactProfile({
+      goals: 'Mantenimiento',
+      weight: '72',
+      dailyCalories: '2000',
+      country: 'Chile',
+    });
+    expect(s).toContain('Obj:Mantenimiento');
+    expect(s).toContain('Cal:2000kcal');
+    expect(s).toContain('Peso:72kg');
+    expect(s).toContain('Pais:Chile');
+  });
+});
+
+describe('buildSearchPrompt', () => {
+  it('modo literal exige la receta exacta en el prompt', () => {
+    const p = buildSearchPrompt({
+      query: 'lentejas turcas',
+      mode: 'literal',
+      profileStr: 'Perfil corto',
+      localeStr: 'ES',
+      supermarketInstruction: '',
+      brandInstruction: '',
+      favoritesStr: '',
+      pesachInstruction: '',
+    });
+    expect(p).toContain('MODO LITERAL');
+    expect(p).toContain('lentejas turcas');
+    expect(p).toContain('EXACTAMENTE');
+  });
+
+  it('modo creativo pide tres opciones', () => {
+    const p = buildSearchPrompt({
+      query: 'cena rápida',
+      mode: 'creative',
+      profileStr: 'Perfil',
+      localeStr: 'ES',
+      supermarketInstruction: '',
+      brandInstruction: '',
+      favoritesStr: '',
+      pesachInstruction: '',
+    });
+    expect(p).toContain('3 opciones');
+  });
+});
 
 describe('sanitizeUserInput', () => {
   it('devuelve cadena vacía si no es string', () => {
