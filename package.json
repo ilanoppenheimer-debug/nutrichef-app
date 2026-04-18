@@ -4,21 +4,26 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:client": "vite --configLoader native",
-    "dev:server": "node server.js",
-    "build": "vite build",
+    "dev": "next dev",
+    "dev:client": "next dev",
+    "dev:server": "next dev",
+    "build": "next build",
     "lint": "eslint .",
-    "preview": "vite preview --configLoader native",
-    "start": "node server.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "preview": "next start",
+    "start": "next start"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.99.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "firebase": "^12.11.0",
     "firebase-admin": "^13.4.0",
     "lucide-react": "^1.7.0",
+    "next": "^16.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-icons": "^5.6.0",
@@ -27,17 +32,22 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.8.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.0.0",
+    "@vitest/coverage-v8": "^4.1.4",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.0.2",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
-    "vite": "^5.0.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.58.2",
+    "vitest": "^4.1.4"
   }
 }

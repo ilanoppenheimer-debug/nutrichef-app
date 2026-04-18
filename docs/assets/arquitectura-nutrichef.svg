@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">Arquitectura NutriChef IA</title>
+  <desc id="desc">Diagrama de arquitectura de frontend, backend, Gemini y Firebase.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 36px Arial, sans-serif; fill: #0f172a; }
+      .label { font: 700 22px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 500 17px Arial, sans-serif; fill: #334155; }
+      .arrow { stroke: #475569; stroke-width: 3; fill: none; marker-end: url(#a); }
+      .box { stroke-width: 2; rx: 18; ry: 18; }
+    </style>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1200" height="640"/>
+  <text class="title" x="50" y="65">Arquitectura NutriChef IA</text>
+
+  <rect class="box" x="70" y="180" width="220" height="120" fill="#dbeafe" stroke="#3b82f6"/>
+  <text class="label" x="122" y="235">Usuario</text>
+  <text class="small" x="118" y="265">Web / Móvil</text>
+
+  <rect class="box" x="360" y="160" width="300" height="160" fill="#dcfce7" stroke="#22c55e"/>
+  <text class="label" x="430" y="220">Frontend</text>
+  <text class="small" x="415" y="250">React 19 + Vite</text>
+  <text class="small" x="410" y="278">Router + Zustand</text>
+
+  <rect class="box" x="730" y="160" width="300" height="160" fill="#ffedd5" stroke="#f97316"/>
+  <text class="label" x="815" y="220">Backend</text>
+  <text class="small" x="774" y="250">Node server.js</text>
+  <text class="small" x="759" y="278">POST /api/gemini</text>
+
+  <rect class="box" x="730" y="390" width="300" height="150" fill="#e0f2fe" stroke="#0284c7"/>
+  <text class="label" x="836" y="445">Gemini</text>
+  <text class="small" x="792" y="475">Generación IA</text>
+
+  <rect class="box" x="360" y="390" width="300" height="150" fill="#ede9fe" stroke="#7c3aed"/>
+  <text class="label" x="458" y="445">Firebase</text>
+  <text class="small" x="447" y="475">Auth + Data</text>
+
+  <line class="arrow" x1="290" y1="240" x2="360" y2="240"/>
+  <text class="small" x="296" y="225">uso app</text>
+
+  <line class="arrow" x1="660" y1="220" x2="730" y2="220"/>
+  <text class="small" x="646" y="200">solicitud receta</text>
+
+  <line class="arrow" x1="730" y1="260" x2="660" y2="260"/>
+  <text class="small" x="644" y="286">respuesta IA</text>
+
+  <line class="arrow" x1="510" y1="320" x2="510" y2="390"/>
+  <text class="small" x="390" y="360">autenticación y datos perfil</text>
+
+  <line class="arrow" x1="880" y1="320" x2="880" y2="390"/>
+  <text class="small" x="914" y="360">consulta modelo</text>
+</svg>
