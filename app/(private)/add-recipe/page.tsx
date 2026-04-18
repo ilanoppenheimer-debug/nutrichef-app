@@ -5,6 +5,9 @@ import { ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useProfileStore } from '@/stores/useProfileStore.js';
 import { useCollectionsStore } from '@/stores/useCollectionsStore.js';
+
+type ProfileStoreState = ReturnType<typeof useProfileStore.getState>;
+type CollectionsStoreState = ReturnType<typeof useCollectionsStore.getState>;
 import { ROUTES } from '@/lib/routes.js';
 import { extractRecipeFromPhoto, extractRecipeFromText } from './hooks/useRecipeExtraction';
 import AddRecipeConditionalContent from './components/sections/AddRecipeConditionalContent';
@@ -18,9 +21,9 @@ type SavedRecipe = RecipePreview & {
 };
 
 export default function AddRecipeView() {
-  const profile = useProfileStore((s: any) => s.profile) as unknown;
-  const savedRecipes = useCollectionsStore((s: any) => s.savedRecipes) as SavedRecipe[];
-  const setSavedRecipes = useCollectionsStore((s: any) => s.setSavedRecipes) as (recipes: SavedRecipe[]) => void;
+  const profile = useProfileStore((s: ProfileStoreState) => s.profile);
+  const savedRecipes = useCollectionsStore((s: CollectionsStoreState) => s.savedRecipes) as SavedRecipe[];
+  const setSavedRecipes = useCollectionsStore((s: CollectionsStoreState) => s.setSavedRecipes);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 

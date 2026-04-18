@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- setters desde useState(null) sin genérico de receta */
 import type { Dispatch, SetStateAction } from 'react';
 
 export type RunIngredientsGenerationDeps = {

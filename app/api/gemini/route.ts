@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { sanitizeGeminiPayload } from './sanitizePayload';
+
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 15;
 const ipHits = new Map<string, { count: number; resetAt: number }>();
@@ -19,22 +21,6 @@ function isRateLimited(ip: string) {
 
   entry.count += 1;
   return entry.count > RATE_LIMIT_MAX;
-}
-
-function sanitizePayload(payload: Record<string, unknown>) {
-  const clone = structuredClone(payload);
-  const generationConfig = clone.generationConfig as Record<string, unknown> | undefined;
-  const generation_config = clone.generation_config as Record<string, unknown> | undefined;
-
-  if (generationConfig?.responseMimeType) {
-    delete generationConfig.responseMimeType;
-  }
-
-  if (generation_config?.responseMimeType) {
-    delete generation_config.responseMimeType;
-  }
-
-  return clone;
 }
 
 async function sleep(ms: number) {
@@ -101,7 +87,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing or invalid payload' }, { status: 400 });
     }
 
-    const sanitizedPayload = sanitizePayload(payload);
+    const sanitizedPayload = sanitizeGeminiPayload(payload);
     const { status, data } = await fetchGeminiWithRetry(kind, sanitizedPayload, apiKey);
 
     if (status !== 200) {

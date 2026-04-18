@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- setters desde useState(null) sin genérico de plan */
 import type { Dispatch, SetStateAction } from 'react';
 import type { MealPrepGenerateClient } from './runMealPrepGeneration';
 

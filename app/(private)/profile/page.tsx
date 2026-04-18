@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — tipar `profile` y secciones en un PR dedicado.
 'use client';
 
 import { Activity, AlertTriangle, Apple, BookOpen, CheckCircle2, ChevronDown, ChevronUp, Dumbbell, HeartPulse, Lock, Moon, PiggyBank, RefreshCw, ShoppingBag, Star, Target, Trophy } from 'lucide-react';

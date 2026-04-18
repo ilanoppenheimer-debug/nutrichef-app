@@ -1,10 +1,14 @@
+import type { CSSProperties } from 'react';
 import { CheckCircle2, Globe } from 'lucide-react';
 import BaseCard from '@/components/base/BaseCard';
+import { DEFAULT_PROFILE } from '@/stores/useProfileStore.js';
 import { COUNTRIES, LANGUAGES } from '../../constants';
 
+type Profile = typeof DEFAULT_PROFILE;
+
 type Props = {
-  profile: any;
-  setProfile: (next: any) => void;
+  profile: Profile;
+  setProfile: (next: Profile | ((prev: Profile) => Profile)) => void;
 };
 
 export default function LocalizationCard({ profile, setProfile }: Props) {
@@ -23,7 +27,7 @@ export default function LocalizationCard({ profile, setProfile }: Props) {
             value={profile.country || 'Chile'}
             onChange={e => setProfile({ ...profile, country: e.target.value })}
             className="w-full p-3 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white text-sm outline-none focus:ring-2 min-h-[48px]"
-            style={{ '--tw-ring-color': 'var(--c-primary)' } as any}
+            style={{ '--tw-ring-color': 'var(--c-primary)' } as CSSProperties}
           >
             {COUNTRIES.map(country => <option key={country}>{country}</option>)}
           </select>

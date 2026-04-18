@@ -3,7 +3,11 @@ import BaseCard from '@/components/base/BaseCard';
 import BaseButton from '@/components/base/BaseButton';
 
 type Props = {
-  user: any;
+  user: {
+    photoURL?: string | null;
+    displayName?: string | null;
+    email?: string | null;
+  } | null | undefined;
   isLocalMode: boolean;
   linkingGoogle: boolean;
   loggingOut: boolean;
@@ -23,7 +27,12 @@ export default function AccountCard({
     <BaseCard title="Cuenta" className="overflow-hidden">
       <div className="p-5 flex items-center gap-4">
         {user?.photoURL ? (
-          <img src={user.photoURL} alt={user.displayName} className="w-12 h-12 rounded-full border-2 shadow-sm" style={{ borderColor: 'var(--c-primary-border)' }} />
+          <img
+            src={user.photoURL}
+            alt={user.displayName ?? 'Avatar'}
+            className="w-12 h-12 rounded-full border-2 shadow-sm"
+            style={{ borderColor: 'var(--c-primary-border)' }}
+          />
         ) : (
           <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg text-white" style={{ background: 'var(--c-primary)' }}>
             {user?.displayName?.[0] || '?'}
