@@ -14,6 +14,16 @@ El orquestador coordina trabajo entre tareas, agentes especializados y validacio
 - Verificar calidad minima antes de cerrar (build, lint, pruebas, consistencia funcional).
 - Reportar estado, riesgos, bloqueos y siguientes pasos de forma clara.
 
+## Stack objetivo del repo
+
+Este repositorio se considera orientado a:
+
+- Next.js App Router (carpeta `app/`)
+- React (componentes server/client)
+- TypeScript
+
+Toda decision de estructura debe respetar convenciones de App Router antes de introducir capas adicionales.
+
 ## Flujo de orquestacion
 
 1. Alinear objetivo y alcance.
@@ -23,6 +33,43 @@ El orquestador coordina trabajo entre tareas, agentes especializados y validacio
 5. Integrar resultados, corregir regresiones y confirmar criterios de exito.
 6. Entregar resumen final con acciones pendientes (si las hay).
 
+## Estructura recomendada en Next.js App Router
+
+- La entrada de cada ruta debe vivir en `app/{segment}/page.tsx` y/o `app/{segment}/layout.tsx`.
+- No crear capa `view` por defecto si `page.tsx` ya representa la ruta.
+- Solo crear una abstraccion adicional cuando exista una responsabilidad clara y reutilizable (no por costumbre).
+- Si una pagina crece o mezcla responsabilidades, extraer UI/logica de presentacion a `app/{segment}/components/*`.
+- Componentes verdaderamente compartidos entre segmentos deben moverse a `components/` global.
+- Evitar mover por defecto logica de ruta a `views/`; en App Router la ruta se modela con `page.tsx` + componentes.
+
+### Estructura permitida / no permitida
+
+Permitido:
+
+- `app/recetas/page.tsx` + `app/recetas/components/RecipeListClient.tsx`
+- `app/perfil/page.tsx` (server) que renderiza `app/perfil/components/ProfileClient.tsx`
+- `components/ui/Button.tsx` solo si se reutiliza en multiples segmentos
+
+No permitido (por defecto):
+
+- `app/recetas/page.tsx` que solo reexporta `views/RecetasView.tsx` sin razon arquitectonica
+- Crear `views/*` como capa obligatoria para todas las rutas
+- Mover logica de una ruta a una carpeta global cuando solo la usa un segmento
+
+## Politica de aislamiento de `use client`
+
+- `use client` debe ser la excepcion, no la base.
+- Mantener `page.tsx` y `layout.tsx` como Server Components por defecto cuando sea viable.
+- Encapsular interactividad (estado local, efectos, handlers, hooks de cliente) en componentes cliente pequenos y focalizados.
+- Si una pagina requiere cliente, preferir un `page.tsx` server que renderice un componente cliente interno (por ejemplo en `app/{segment}/components`).
+- No expandir `use client` a toda la rama por comodidad: aislar el minimo arbol necesario.
+
+### Regla practica para decidir `use client`
+
+- Si el archivo usa `useEffect`, `useState`, `useRouter`, handlers de eventos o APIs del navegador, ese archivo puede ser cliente.
+- Si solo compone datos/markup, debe permanecer server.
+- Cuando haya duda, empezar server y extraer un componente cliente pequeno para la parte interactiva.
+
 ## Reglas operativas
 
 - Priorizar cambios pequenos y reversibles.
@@ -30,6 +77,8 @@ El orquestador coordina trabajo entre tareas, agentes especializados y validacio
 - Evitar trabajo duplicado: reutilizar scripts y patrones existentes del proyecto.
 - Mantener documentacion relevante actualizada cuando cambie el comportamiento.
 - Escalar incertidumbre temprano con preguntas concretas.
+- Respetar convenciones App Router antes de proponer patrones heredados de React Router.
+- Priorizar componentes por segmento de ruta (`app/{segment}/components`) frente a capas `view` genericas.
 
 ## Restricciones fuertes de seguridad (obligatorias)
 
@@ -70,6 +119,26 @@ Al reportar hallazgos o riesgos, usar este orden:
 - Documentacion: actualizacion de `README`, guias operativas y pasos de validacion.
 
 La delegacion no elimina responsabilidad del orquestador: debe integrar y verificar el resultado final.
+
+## Checklist de revision arquitectonica (antes de cerrar)
+
+Validar explicitamente:
+
+- La ruta usa `page.tsx`/`layout.tsx` como punto de entrada.
+- No se introdujo `view` redundante sin responsabilidad clara.
+- `use client` quedo aislado al minimo componente posible.
+- Los componentes especificos de pagina viven en `app/{segment}/components`.
+- Solo lo reusable entre paginas fue promovido a `components/` global.
+- La propuesta sigue convenciones de Next.js App Router y no mezcla estructuras incompatibles.
+
+## Criterios de excepcion (cuando desviarse)
+
+Solo se permite romper las reglas anteriores si se documenta explicitamente en la entrega:
+
+- Motivo tecnico concreto de la excepcion.
+- Alcance exacto (archivo/ruta afectada).
+- Alternativa evaluada y por que se descarto.
+- Riesgo introducido y plan para mitigarlo.
 
 ## Formato de reporte final
 

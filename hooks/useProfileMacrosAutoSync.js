@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { calculateTDEE } from '../lib/gemini.js';
 
 export function useProfileMacrosAutoSync(profile, setProfile) {
+  /* eslint-disable react-hooks/exhaustive-deps -- deps acotadas al TDEE; `profile` entero re-dispararía al sincronizar macros */
   useEffect(() => {
     if (profile.manualCalories && profile.manualProtein && profile.manualFiber && profile.manualCarb) return;
     if (!profile.weight || !profile.height || !profile.age) return;
@@ -32,4 +33,5 @@ export function useProfileMacrosAutoSync(profile, setProfile) {
     profile.manualCarb,
     setProfile,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 }

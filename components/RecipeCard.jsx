@@ -28,7 +28,7 @@ import TweakBar, { COOKING_TWEAKS } from './TweakBar.jsx';
 import { recordLike, recordDislike } from '../lib/learningEngine.js';
 import { askChefAboutRecipe } from '../services/chefService.js';
 import { addRecipeToCollection, isRecipeInCollection, removeRecipeFromCollection } from '../helpers/recipeCollectionsHelpers.js';
-import { useConfirmDialog } from '../context/ConfirmDialogContext.jsx';
+import { useConfirmDialog } from '@/context/ConfirmDialogContext';
 
 function formatSafetyBadge(reason) {
   if (!reason) return 'Marca verificada';

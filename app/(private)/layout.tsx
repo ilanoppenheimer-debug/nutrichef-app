@@ -3,14 +3,16 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext.jsx';
-import { FoodPreferencesProvider } from '@/context/FoodPreferencesContext.jsx';
-import LoginView from '@/views/LoginView.jsx';
-import AppLayout from '@/components/layout/AppLayout.jsx';
-import { SplashScreen } from '@/components/routing/RouteScreens.jsx';
+import { useAuth } from '@/context/AuthContext';
+import { FoodPreferencesProvider } from '@/context/FoodPreferencesContext';
+import LoginView from '@/components/auth/LoginClient';
+import { SplashScreen } from '@/components/routing/RouteScreens';
 import { useProfileStore, isProfileComplete } from '@/stores/useProfileStore.js';
 import { useSyncStore } from '@/stores/useSyncStore.js';
 import { ROUTES } from '@/lib/routes.js';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import TipsWidget from './components/TipsWidget';
 
 export default function PrivateLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -31,7 +33,16 @@ export default function PrivateLayout({ children }: { children: ReactNode }) {
 
   return (
     <FoodPreferencesProvider>
-      <AppLayout>{children}</AppLayout>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans pb-28 md:pb-12 transition-colors duration-200">
+        <Navbar />
+
+        <main className="max-w-6xl mx-auto px-6 sm:px-5 lg:px-4 py-6 md:py-8">
+          {children}
+        </main>
+
+        <TipsWidget />
+        <Footer />
+      </div>
     </FoodPreferencesProvider>
   );
 }

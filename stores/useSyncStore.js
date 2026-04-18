@@ -4,10 +4,22 @@ import {
   query, orderBy, limit,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext';
 import { readStoredJson, writeStoredJson } from '../lib/gemini.js';
 import { useProfileStore, DEFAULT_PROFILE } from './useProfileStore.js';
 import { useCollectionsStore } from './useCollectionsStore.js';
+
+const LOCAL_SYNC_KEYS = {
+  profile: 'nutrichef_profile',
+  favoriteRecipes: 'nutrichef_favs',
+  interestedRecipes: 'nutrichef_interested',
+  savedRecipes: 'nutrichef_saved_recipes',
+  generatedRecipes: 'nutrichef_generated',
+};
+
+function clearLocalSyncCache() {
+  Object.values(LOCAL_SYNC_KEYS).forEach((key) => localStorage.removeItem(key));
+}
 
 // ── Debounced Firestore field writer ────────────────────────────────────────
 
@@ -46,16 +58,18 @@ export function useSyncStore() {
 
     // ── LOCAL MODE ─────────────────────────────────────────────────────
     if (isLocalMode) {
+      profileStore.getState().reset();
+      collectionsStore.getState().reset();
       profileStore.getState().setProfile({
         ...DEFAULT_PROFILE,
-        ...readStoredJson('nutrichef_profile', DEFAULT_PROFILE),
+        ...readStoredJson(LOCAL_SYNC_KEYS.profile, DEFAULT_PROFILE),
       });
 
       const cs = collectionsStore.getState();
-      cs.setFavoriteRecipes(readStoredJson('nutrichef_favs', []));
-      cs.setInterestedRecipes(readStoredJson('nutrichef_interested', []));
-      cs.setSavedRecipes(readStoredJson('nutrichef_saved_recipes', []));
-      cs.setGeneratedRecipes(readStoredJson('nutrichef_generated', []));
+      cs.setFavoriteRecipes(readStoredJson(LOCAL_SYNC_KEYS.favoriteRecipes, []));
+      cs.setInterestedRecipes(readStoredJson(LOCAL_SYNC_KEYS.interestedRecipes, []));
+      cs.setSavedRecipes(readStoredJson(LOCAL_SYNC_KEYS.savedRecipes, []));
+      cs.setGeneratedRecipes(readStoredJson(LOCAL_SYNC_KEYS.generatedRecipes, []));
 
       profileStore.getState().setFirestoreReady(true);
 
@@ -64,15 +78,15 @@ export function useSyncStore() {
         (state) => state.profile,
         (profile) => {
           if (profileStore.getState().firestoreReady) {
-            writeStoredJson('nutrichef_profile', profile);
+            writeStoredJson(LOCAL_SYNC_KEYS.profile, profile);
           }
         },
       );
 
       const localKeys = [
-        ['favoriteRecipes', 'nutrichef_favs'],
-        ['interestedRecipes', 'nutrichef_interested'],
-        ['savedRecipes', 'nutrichef_saved_recipes'],
+        ['favoriteRecipes', LOCAL_SYNC_KEYS.favoriteRecipes],
+        ['interestedRecipes', LOCAL_SYNC_KEYS.interestedRecipes],
+        ['savedRecipes', LOCAL_SYNC_KEYS.savedRecipes],
       ];
       const collUnsubs = localKeys.map(([field, lsKey]) =>
         collectionsStore.subscribe(
@@ -87,7 +101,7 @@ export function useSyncStore() {
         (state) => state.generatedRecipes,
         (val) => {
           if (profileStore.getState().firestoreReady) {
-            writeStoredJson('nutrichef_generated', val.slice(0, 50));
+            writeStoredJson(LOCAL_SYNC_KEYS.generatedRecipes, val.slice(0, 50));
           }
         },
       );
@@ -98,29 +112,15 @@ export function useSyncStore() {
 
     // ── NO AUTH YET ────────────────────────────────────────────────────
     if (!uid) {
+      clearLocalSyncCache();
+      profileStore.getState().reset();
+      collectionsStore.getState().reset();
       profileStore.getState().setFirestoreReady(false);
       return;
     }
 
     // ── FIRESTORE MODE ─────────────────────────────────────────────────
     profileStore.getState().setFirestoreReady(false);
-
-    const loadFromLocalFallback = () => {
-      const lp = readStoredJson('nutrichef_profile', null);
-      if (lp) profileStore.getState().setProfile({ ...DEFAULT_PROFILE, ...lp });
-
-      const lf = readStoredJson('nutrichef_favs', []);
-      if (lf.length) collectionsStore.getState().setFavoriteRecipes(lf);
-
-      const li = readStoredJson('nutrichef_interested', []);
-      if (li.length) collectionsStore.getState().setInterestedRecipes(li);
-
-      const lsr = readStoredJson('nutrichef_saved_recipes', []);
-      if (lsr.length) collectionsStore.getState().setSavedRecipes(lsr);
-
-      const lg = readStoredJson('nutrichef_generated', []);
-      if (lg.length) collectionsStore.getState().setGeneratedRecipes(lg);
-    };
 
     (async () => {
       try {
@@ -133,9 +133,6 @@ export function useSyncStore() {
           if (data.savedRecipes) collectionsStore.getState().setSavedRecipes(data.savedRecipes);
           if (data.plan) collectionsStore.getState().setPlan(data.plan);
           if (data.savedMeals) collectionsStore.getState().setSavedMeals(data.savedMeals);
-        } else {
-          // New user: migrate from localStorage
-          loadFromLocalFallback();
         }
 
         // Load generated recipes subcollection
@@ -150,10 +147,7 @@ export function useSyncStore() {
             snap2.docs.map((d) => ({ id: d.id, ...d.data() })),
           );
         } catch (_) { /* empty subcollection or offline */ }
-      } catch (_) {
-        // Firestore unavailable/offline: keep app usable with local cache.
-        loadFromLocalFallback();
-      }
+      } catch (_) { /* keep default clean state when Firestore is unavailable */ }
 
       profileStore.getState().setFirestoreReady(true);
 

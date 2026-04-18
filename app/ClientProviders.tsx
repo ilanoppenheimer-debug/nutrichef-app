@@ -1,10 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ThemeProvider } from '@/context/ThemeContext.jsx';
-import { AuthProvider } from '@/context/AuthContext.jsx';
-import { ConfirmDialogProvider } from '@/context/ConfirmDialogContext.jsx';
-import QueryProvider from '@/providers/QueryProvider.jsx';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { ConfirmDialogProvider } from '@/context/ConfirmDialogContext';
+import QueryProvider from '@/providers/QueryProvider';
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
   return (
@@ -17,3 +17,4 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
     </ThemeProvider>
   );
 }
+

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useProfileStore } from '../stores/useProfileStore.js';
 import { useCollectionsStore } from '../stores/useCollectionsStore.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext';
 import { useRecipeCache } from './useRecipeCache.js';
 import {
   fetchGeminiContent,

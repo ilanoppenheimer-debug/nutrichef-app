@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext.jsx';
+import { useAuth } from '@/context/AuthContext';
 import { ROUTES } from '@/lib/routes.js';
-import { SplashScreen } from '@/components/routing/RouteScreens.jsx';
+import { SplashScreen } from '@/components/routing/RouteScreens';
 
 export default function Page() {
   const router = useRouter();
@@ -29,3 +29,4 @@ export default function Page() {
 
   return null;
 }
+

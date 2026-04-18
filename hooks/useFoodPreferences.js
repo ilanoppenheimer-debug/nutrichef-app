@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { FoodPreferencesContext } from '../context/FoodPreferencesContext.jsx';
+import { FoodPreferencesContext } from '../context/FoodPreferencesContext';
 
 export function useFoodPreferences() {
   const context = useContext(FoodPreferencesContext);
